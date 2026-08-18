@@ -31,7 +31,31 @@ const unicodeRanges = {
 
 const rangesByLanguage = {
   chinese: [unicodeRanges.CJKCommon, unicodeRanges.fullwidth, unicodeRanges.CJKIdeograph].join(","),
+  /**
+   * The ideographs alone, without the punctuation the other Chinese ranges carry.
+   *
+   * The bundled font sets full-width punctuation tightly - a comma is 42/1024 em, an exclamation
+   * mark 24 - where a system face gives every one of them a full em. Swapping those would widen
+   * any line holding punctuation by half again, so they stay where they are.
+   */
+  chineseIdeographs: [unicodeRanges.CJKIdeograph, "U+3400-4DBF", "U+F900-FAFF"].join(","),
 };
+
+/**
+ * The system's own CJK face, in the order each platform is likely to have one.
+ *
+ * If a machine has none of them the load rejects, and {@linkcode initFonts} quietly keeps the
+ * bundled pixel font - so this is safe to leave on everywhere.
+ */
+const systemCJKFont = [
+  "local('Microsoft YaHei')",
+  "local('PingFang SC')",
+  "local('Noto Sans CJK SC')",
+  "local('Source Han Sans SC')",
+  "local('Heiti SC')",
+  "local('SimHei')",
+  "local('WenQuanYi Micro Hei')",
+].join(",");
 
 const fonts: LoadingFontFaceProperty[] = [
   // unicode (special characters)
@@ -91,6 +115,26 @@ const fonts: LoadingFontFaceProperty[] = [
   {
     face: new FontFace("pkmnems", "url(./fonts/terrible-thaifix.ttf)", { unicodeRange: unicodeRanges.thai }),
     extraOptions: { sizeAdjust: "133%" },
+  },
+  // chinese, at the screen's resolution rather than the font's
+  //
+  // The bundled pixel font carries its 20901 ideographs on a 16x16 grid, so at the 96px the UI draws
+  // text at, every stroke lands as a 6px block. Handing the ideographs to the system face gives them
+  // real outlines while Latin, digits, symbols and punctuation stay on the pixel font. These come
+  // last in the array so they win over the entries above, which also cover this range.
+  //
+  // sizeAdjust brings the system face onto emerald's 0.8125em ideograph advance - measured drift is
+  // 0.3% of a character, so nothing reflows. pkmnems reaches the same figure through its own 133%
+  // adjustment. Drop these two entries to get the pixel look back.
+  {
+    face: new FontFace("emerald", systemCJKFont, { unicodeRange: rangesByLanguage.chineseIdeographs }),
+    extraOptions: { sizeAdjust: "81%" },
+    only: ["zh"],
+  },
+  {
+    face: new FontFace("pkmnems", systemCJKFont, { unicodeRange: rangesByLanguage.chineseIdeographs }),
+    extraOptions: { sizeAdjust: "108%" },
+    only: ["zh"],
   },
 ];
 
