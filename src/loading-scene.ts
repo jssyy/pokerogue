@@ -8,7 +8,6 @@ import { BiomeId } from "#enums/biome-id";
 import { GachaType } from "#enums/gacha-types";
 import { getBiomeHasProps } from "#field/arena";
 import { CacheBustedLoaderPlugin } from "#plugins/cache-busted-loader-plugin";
-import { sharpenUiTextures } from "#system/crisp-ui-textures";
 import { isHomeworkHomeScreen } from "#system/homework-gate";
 import { getWindowVariantSuffix, WindowVariant } from "#ui/ui-theme";
 import { hasAllLocalizedSprites, localPing } from "#utils/common";
@@ -560,9 +559,6 @@ export class LoadingScene extends SceneBase {
 
   async create() {
     this.events.once(Phaser.Scenes.Events.DESTROY, () => this.handleDestroy());
-    // Everything is loaded and nothing has been built from it yet, which is the one moment these
-    // textures can be swapped out without anything already holding a frame from the old ones.
-    sharpenUiTextures(this);
     this.scene.start("battle");
   }
 
