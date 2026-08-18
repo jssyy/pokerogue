@@ -8,11 +8,15 @@ import { BiomeId } from "#enums/biome-id";
 import { GachaType } from "#enums/gacha-types";
 import { getBiomeHasProps } from "#field/arena";
 import { CacheBustedLoaderPlugin } from "#plugins/cache-busted-loader-plugin";
+import { isHomeworkHomeScreen } from "#system/homework-gate";
 import { getWindowVariantSuffix, WindowVariant } from "#ui/ui-theme";
 import { hasAllLocalizedSprites, localPing } from "#utils/common";
 import { enumValueToKey, getEnumValues } from "#utils/enums";
 import i18next from "i18next";
 import type { GameObjects } from "phaser";
+
+/** Minimum gap between redraws of the "loading asset ..." label, in milliseconds. */
+const ASSET_TEXT_INTERVAL = 100;
 
 export class LoadingScene extends SceneBase {
   public static readonly KEY = "loading";
@@ -451,6 +455,10 @@ export class LoadingScene extends SceneBase {
       })
       .setOrigin(0.5, 0.5);
 
+    /** Throttling state for the two labels the loader would otherwise redraw thousands of times. */
+    let lastPercent = -1;
+    let lastAssetTextAt = 0;
+
     const loadingGraphics: (GameObjects.Image | GameObjects.Graphics | GameObjects.Text)[] = [];
     loadingGraphics.push(
       bg,
@@ -464,7 +472,12 @@ export class LoadingScene extends SceneBase {
       disclaimerDescriptionText,
     );
 
-    if (!mobile) {
+    // The studio video is PokeRogue's own front door. With the homework planner in charge of the
+    // boot flow, our cutscene is the opener instead, so the video is skipped and the loading screen
+    // shows straight away. Credit for the base game is given in that cutscene.
+    const playStudioIntro = !isHomeworkHomeScreen();
+
+    if (!mobile && playStudioIntro) {
       loadingGraphics.forEach(g => {
         g.setVisible(false);
       });
@@ -489,6 +502,9 @@ export class LoadingScene extends SceneBase {
 
     this.load
       .once(this.LOAD_EVENTS.START, () => {
+        if (!playStudioIntro) {
+          return;
+        }
         // videos do not need to be preloaded
         intro.loadURL("images/intro_dark.mp4", true);
         if (mobile) {
@@ -498,7 +514,14 @@ export class LoadingScene extends SceneBase {
         intro.play();
       })
       .on(this.LOAD_EVENTS.PROGRESS, (progress: number) => {
-        percentText.setText(`${Math.floor(progress * 100)}%`);
+        const percent = Math.floor(progress * 100);
+        // Both texts rasterise to a new GPU texture on every change. The loader fires these events
+        // thousands of times, so redrawing on each one costs more than the loading it reports on;
+        // the bar itself is cheap vector drawing and stays smooth.
+        if (percent !== lastPercent) {
+          lastPercent = percent;
+          percentText.setText(`${percent}%`);
+        }
         // need to reset fill style due to `clear` restting it
         progressBar
           .clear()
@@ -506,7 +529,11 @@ export class LoadingScene extends SceneBase {
           .fillRect(midWidth - 320, 360, 640 * progress, 64);
       })
       .on(this.LOAD_EVENTS.FILE_COMPLETE, (key: string) => {
-        assetText.setText(i18next.t("menu:loadingAsset", { assetName: key }));
+        const now = performance.now();
+        if (now - lastAssetTextAt > ASSET_TEXT_INTERVAL) {
+          lastAssetTextAt = now;
+          assetText.setText(i18next.t("menu:loadingAsset", { assetName: key }));
+        }
         switch (key) {
           case "loading_bg":
             bg.setTexture("loading_bg");

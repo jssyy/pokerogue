@@ -2,6 +2,7 @@ import "#app/polyfills"; // All polyfills MUST be loaded first for side effects
 import "#init/init-manifest"; // initializes the manifest, must be done *before* i18n is initialized due to being used for caching
 import "#app/i18n"; // Initializes i18n on import
 
+import { initPixelPerfectScaling } from "#app/display-scaling";
 import { InvertPostFX } from "#app/pipelines/invert";
 import { preventDoubleTapZoom } from "#app/touch-controls";
 import { isBeta, isDev } from "#constants/app-constants";
@@ -67,12 +68,17 @@ async function startGame(): Promise<void> {
     dom: {
       createContainer: true,
     },
+    // `pixelArt` bundles nearest-neighbour texture sampling with `roundPixels`. Without the latter,
+    // sprites land on half pixels and their art pixels come out uneven widths, which reads as a
+    // soft, slightly smeared sprite next to the crisp UI text.
+    pixelArt: true,
     antialias: false,
     pipeline: [InvertPostFX] as unknown as Phaser.Types.Core.PipelineConfig,
     scene: [LoadingScene, BattleScene],
     version,
   });
   game.sound.pauseOnBlur = false;
+  initPixelPerfectScaling(game);
 }
 
 try {

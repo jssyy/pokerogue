@@ -10,6 +10,10 @@ export class MockInputText extends MockText {
     super(textureManager, x, y, content, styleOptions);
   }
 
+  setFocus() {}
+
+  setBlur() {}
+
   selectText(_selectionStart?: number, _selectionEnd?: number) {}
 
   selectAll() {}

@@ -102,6 +102,11 @@ body {
   transform-origin: center !important;
 }
 
+/* Pixel art must never be blended by the browser when it is scaled up. */
+#app canvas {
+  image-rendering: pixelated;
+}
+
 /*
   Supports automatic vertical centering as suggested in PR#1114, but only via CSS
 

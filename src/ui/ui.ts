@@ -30,6 +30,9 @@ import { GameStatsUiHandler } from "#ui/game-stats-ui-handler";
 import { GamepadBindingUiHandler } from "#ui/gamepad-binding-ui-handler";
 import { SettingsGamepadUiHandler } from "#ui/gamepad-settings-ui-handler";
 import { GeneralSettingsUiHandler } from "#ui/general-settings-ui-handler";
+import { HomeworkPinFormUiHandler } from "#ui/homework-pin-form-ui-handler";
+import { HomeworkTaskFormUiHandler } from "#ui/homework-task-form-ui-handler";
+import { HomeworkUiHandler } from "#ui/homework-ui-handler";
 import { KeyboardBindingUiHandler } from "#ui/keyboard-binding-ui-handler";
 import { SettingsKeyboardUiHandler } from "#ui/keyboard-settings-ui-handler";
 import { LoadingModalUiHandler } from "#ui/loading-modal-ui-handler";
@@ -108,6 +111,12 @@ const noTransitionModes = [
   UiMode.RUN_INFO,
   UiMode.CHANGE_PASSWORD_FORM,
   UiMode.ALERT_MODAL,
+  // The planner swaps in without a fade: the intro's curtain covers the hand-off from the cutscene,
+  // and a fade between the planner and its own menus would only add dead time.
+  UiMode.HOMEWORK,
+  UiMode.HOMEWORK_OPTION_SELECT,
+  UiMode.HOMEWORK_PIN,
+  UiMode.HOMEWORK_TASK_FORM,
 ];
 
 // biome-ignore lint/style/useNamingConvention: a unique case (only 2 letters)
@@ -182,6 +191,11 @@ export class UI extends Phaser.GameObjects.Container {
       new MysteryEncounterUiHandler(),
       new ChangePasswordFormUiHandler(),
       new AlertModalUiHandler(),
+      // homework planner
+      new HomeworkUiHandler(),
+      new OptionSelectUiHandler(UiMode.HOMEWORK_OPTION_SELECT),
+      new HomeworkPinFormUiHandler(),
+      new HomeworkTaskFormUiHandler(),
     ];
   }
 

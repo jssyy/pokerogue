@@ -28,6 +28,7 @@ enum MenuOptions {
   EGG_LIST,
   EGG_GACHA,
   POKEDEX,
+  HOMEWORK,
   MANAGE_DATA,
   COMMUNITY,
   SAVE_AND_QUIT,
@@ -140,7 +141,14 @@ export class MenuUiHandler extends MessageUiHandler {
     this.optionSelectText = addTextObject(
       0,
       0,
-      this.menuOptions.map(o => `${i18next.t(`menuUiHandler:${toCamelCase(MenuOptions[o])}`)}`).join("\n"),
+      this.menuOptions
+        .map(o =>
+          // The homework planner ships its own strings rather than living in the locale submodule.
+          o === MenuOptions.HOMEWORK
+            ? i18next.t("homework:name")
+            : `${i18next.t(`menuUiHandler:${toCamelCase(MenuOptions[o])}`)}`,
+        )
+        .join("\n"),
       TextStyle.WINDOW,
       { maxLines: this.menuOptions.length },
     );
@@ -604,6 +612,10 @@ export class MenuUiHandler extends MessageUiHandler {
         case MenuOptions.POKEDEX:
           ui.revertMode();
           ui.setOverlayMode(UiMode.POKEDEX);
+          success = true;
+          break;
+        case MenuOptions.HOMEWORK:
+          ui.setOverlayMode(UiMode.HOMEWORK);
           success = true;
           break;
         case MenuOptions.MANAGE_DATA:
