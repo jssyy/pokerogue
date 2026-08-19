@@ -48,6 +48,15 @@ import type BBCodeText from "phaser3-rex-plugins/plugins/bbcodetext";
  * the top edge of their bars. Three puts the ink back in the middle: measured against the plates, the
  * egg-move rows land dead centre and the move rows within a quarter of a pixel.
  */
+/**
+ * Point sizes at which the system face's figures stand as tall as the pixel font's did.
+ *
+ * Unlike {@linkcode systemFontSize}, which matches Chinese, these are matched on digits, and had to
+ * be measured per readout: the pixel font sets every glyph on one narrow width, so the ratio between
+ * the two faces is not the same for a four digit dex number as it is for a candy tally.
+ */
+const DIGIT_SIZE = { dexNumber: 68, candyCount: 41, tally: 68 } as const;
+
 const MOVE_LABEL_BASELINE_NUDGE = 3;
 
 export class StarterSummary extends Phaser.GameObjects.Container {
@@ -125,7 +134,10 @@ export class StarterSummary extends Phaser.GameObjects.Container {
       .setOrigin(0, 1)
       .setVisible(false); // Pixel text 'No' shiny
 
-    this.pokemonNumberText = addTextObject(41, 1, "0000", TextStyle.SUMMARY_DEX_NUM) //
+    this.pokemonNumberText = addTextObject(41, 1, "0000", TextStyle.SUMMARY_DEX_NUM, {
+      fontFamily: SYSTEM_UI_FONT,
+      fontSize: DIGIT_SIZE.dexNumber,
+    }) //
       .setOrigin(1, 0);
 
     this.pokemonNameText = addTextObject(6, 112, "", TextStyle.SUMMARY) //
@@ -414,7 +426,10 @@ export class StarterSummary extends Phaser.GameObjects.Container {
       .setTint(0x000000)
       .setAlpha(0.5);
 
-    this.pokemonCandyCountText = addTextObject(9.5, 0, "x0", TextStyle.WINDOW_ALT, { fontSize: "56px" }) //
+    this.pokemonCandyCountText = addTextObject(9.5, 0, "x0", TextStyle.WINDOW_ALT, {
+      fontFamily: SYSTEM_UI_FONT,
+      fontSize: DIGIT_SIZE.candyCount,
+    }) //
       .setOrigin(0);
     this.pokemonCandyContainer.add([
       this.pokemonCandyIcon,
@@ -432,13 +447,19 @@ export class StarterSummary extends Phaser.GameObjects.Container {
       .setOrigin(0)
       .setScale(0.75);
 
-    this.pokemonCaughtCountText = addTextObject(24, 4, "0", TextStyle.WINDOW_ALT) //
+    this.pokemonCaughtCountText = addTextObject(24, 4, "0", TextStyle.WINDOW_ALT, {
+      fontFamily: SYSTEM_UI_FONT,
+      fontSize: DIGIT_SIZE.tally,
+    }) //
       .setOrigin(0);
     this.pokemonHatchedIcon = globalScene.add //
       .sprite(1, 14, "egg_icons")
       .setOrigin(0.15, 0.2)
       .setScale(0.8);
-    this.pokemonHatchedCountText = addTextObject(24, 19, "0", TextStyle.WINDOW_ALT) //
+    this.pokemonHatchedCountText = addTextObject(24, 19, "0", TextStyle.WINDOW_ALT, {
+      fontFamily: SYSTEM_UI_FONT,
+      fontSize: DIGIT_SIZE.tally,
+    }) //
       .setOrigin(0);
     this.pokemonMovesContainer = globalScene.add //
       .container(102, 16)

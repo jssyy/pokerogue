@@ -4,7 +4,7 @@ import type { PokemonSpecies } from "#data/pokemon-species";
 import type { SpeciesId } from "#enums/species-id";
 import { TextStyle } from "#enums/text-style";
 import type { DexAttrProps } from "#types/save-data";
-import { addTextObject } from "#ui/text";
+import { addTextObject, SYSTEM_UI_FONT } from "#ui/text";
 
 export class StarterContainer extends Phaser.GameObjects.Container {
   public species: PokemonSpecies;
@@ -42,7 +42,9 @@ export class StarterContainer extends Phaser.GameObjects.Container {
     }
     this.add(this.shinyIcons);
 
-    const label = addTextObject(1, 2, "0", TextStyle.WINDOW, { fontSize: "32px" });
+    // The cost badge is a single figure; 35 is the size at which the system face's digits stand as
+    // tall as the pixel font's did at 32.
+    const label = addTextObject(1, 2, "0", TextStyle.WINDOW, { fontFamily: SYSTEM_UI_FONT, fontSize: 35 });
     label.setShadowOffset(2, 2);
     label.setOrigin(0, 0);
     label.setVisible(false);
