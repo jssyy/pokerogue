@@ -527,18 +527,24 @@ export class BattleScene extends SceneBase {
     // The biome name already comes from an outline face; the wave number and the money beside it are
     // digits, which the pixel font still draws on its 16x16 grid. Both hang off the right edge with
     // open sky to their left, so giving them the same face costs nothing in layout.
+    //
+    // Both are sized down from the style's default, because naming the face here bypasses the 81%
+    // adjustment `initFonts` applies when it lends the system face to the pixel family. 58 keeps the
+    // biome name exactly the size it was; the money, being all figures, matches the pixel font's
+    // digits at 44.
     this.biomeWaveText = addTextObject(
       this.scaledCanvas.width - 2,
       0,
       STARTING_WAVE.toString(),
       TextStyle.BATTLE_INFO,
-      {
-        fontFamily: SYSTEM_UI_FONT,
-      },
+      { fontFamily: SYSTEM_UI_FONT, fontSize: 58 },
     )
       .setName("text-biome-wave")
       .setOrigin(1, 0.5);
-    this.moneyText = addTextObject(this.scaledCanvas.width - 2, 0, "", TextStyle.MONEY, { fontFamily: SYSTEM_UI_FONT })
+    this.moneyText = addTextObject(this.scaledCanvas.width - 2, 0, "", TextStyle.MONEY, {
+      fontFamily: SYSTEM_UI_FONT,
+      fontSize: 44,
+    })
       .setName("text-money")
       .setOrigin(1, 0.5);
 

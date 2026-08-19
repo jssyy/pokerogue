@@ -293,7 +293,10 @@ export abstract class BattleInfo extends Phaser.GameObjects.Container {
     this.hpBar = globalScene.add.image(posParams.hpBarX, posParams.hpBarY, "overlay_hp").setName("hp_bar").setOrigin(0);
     this.add(this.hpBar);
 
-    this.hpLabel = this.makeCaption(posParams.hpBarX - 1, posParams.hpBarY - 3, CAPTIONS.hp, 1, 0);
+    // Centred on the bar rather than hung from a top edge: a text object's box carries leading the
+    // 7 pixel sprite did not, which dropped the caption's ink about a pixel and a half onto the bar.
+    // Measured against the green fill, this puts it back where the art had it.
+    this.hpLabel = this.makeCaption(posParams.hpBarX - 1, posParams.hpBarY + 1, CAPTIONS.hp, 1, 0.5);
     this.add(this.hpLabel);
 
     this.levelNumbersContainer = globalScene.add
