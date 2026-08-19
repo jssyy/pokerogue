@@ -133,7 +133,7 @@ import { CharSprite } from "#ui/char-sprite";
 import { PartyExpBar } from "#ui/party-exp-bar";
 import { PokeballTray } from "#ui/pokeball-tray";
 import { PokemonInfoContainer } from "#ui/pokemon-info-container";
-import { addTextObject, getTextColor, RAINBOW_TINT } from "#ui/text";
+import { addTextObject, getTextColor, RAINBOW_TINT, SYSTEM_UI_FONT } from "#ui/text";
 import { UI } from "#ui/ui";
 import { addUiThemeOverrides, updateWindowType } from "#ui/ui-theme";
 import { playTween } from "#utils/anim-utils";
@@ -524,10 +524,21 @@ export class BattleScene extends SceneBase {
       .setName("candy-bar")
       .setup();
 
-    this.biomeWaveText = addTextObject(this.scaledCanvas.width - 2, 0, STARTING_WAVE.toString(), TextStyle.BATTLE_INFO)
+    // The biome name already comes from an outline face; the wave number and the money beside it are
+    // digits, which the pixel font still draws on its 16x16 grid. Both hang off the right edge with
+    // open sky to their left, so giving them the same face costs nothing in layout.
+    this.biomeWaveText = addTextObject(
+      this.scaledCanvas.width - 2,
+      0,
+      STARTING_WAVE.toString(),
+      TextStyle.BATTLE_INFO,
+      {
+        fontFamily: SYSTEM_UI_FONT,
+      },
+    )
       .setName("text-biome-wave")
       .setOrigin(1, 0.5);
-    this.moneyText = addTextObject(this.scaledCanvas.width - 2, 0, "", TextStyle.MONEY)
+    this.moneyText = addTextObject(this.scaledCanvas.width - 2, 0, "", TextStyle.MONEY, { fontFamily: SYSTEM_UI_FONT })
       .setName("text-money")
       .setOrigin(1, 0.5);
 

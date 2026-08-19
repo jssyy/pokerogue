@@ -24,6 +24,24 @@ const READOUT_DIGIT_FONT_SIZE = 56;
 /** Width of one cell on the grid the `numbers` sprites used, still the unit the box is sized in. */
 const READOUT_CELL_WIDTH = 8;
 
+/**
+ * The `Lv.`, `HP` and `EXP` captions, restated as type rather than as 7 pixel tall images.
+ *
+ * `size` is the point size at which the glyphs stand as tall as the coloured body of the sprite each
+ * one replaces, and `colour` is sampled straight from that sprite, so only the letterforms change.
+ * All three are right-aligned and grow leftwards, and every one of them is narrower set as text than
+ * it was as art - `HP` by a quarter, `EXP` by half - so nothing can be pushed into.
+ */
+const CAPTIONS = {
+  level: { text: "Lv.", size: 42, colour: "#ffffff" },
+  hp: { text: "HP", size: 42, colour: "#39ff7b" },
+  hpBoss: { text: "BOSS", size: 42, colour: "#f35c2a" },
+  exp: { text: "EXP", size: 28, colour: "#00baf3" },
+} as const;
+
+/** Thickness of the dark keyline, standing in for the outline the sprites carried. */
+const CAPTION_STROKE = 8;
+
 /** The colours the `numbers` and `numbers_red` sprites were drawn in, so no palette changes. */
 const READOUT_COLOURS = {
   normal: { fill: "#ffffff", shadow: "#827586" },
@@ -85,7 +103,7 @@ export abstract class BattleInfo extends Phaser.GameObjects.Container {
   protected splicedIcon: Phaser.GameObjects.Sprite;
   protected statusIndicator: Phaser.GameObjects.Sprite;
   protected levelContainer: Phaser.GameObjects.Container;
-  protected hpLabel: Phaser.GameObjects.Image;
+  protected hpLabel: Phaser.GameObjects.Text;
   protected hpBar: Phaser.GameObjects.Image;
   protected levelNumbersContainer: Phaser.GameObjects.Container;
   protected type1Icon: Phaser.GameObjects.Sprite;
@@ -270,15 +288,12 @@ export abstract class BattleInfo extends Phaser.GameObjects.Container {
       .setName("container_level");
     this.add(this.levelContainer);
 
-    const levelOverlay = globalScene.add.image(5.5, 0, getLocalizedSpriteKey("overlay_lv")).setOrigin(1, 0.5);
-    this.levelContainer.add(levelOverlay);
+    this.levelContainer.add(this.makeCaption(5.5, 0, CAPTIONS.level, 1, 0.5));
 
     this.hpBar = globalScene.add.image(posParams.hpBarX, posParams.hpBarY, "overlay_hp").setName("hp_bar").setOrigin(0);
     this.add(this.hpBar);
 
-    this.hpLabel = globalScene.add
-      .image(posParams.hpBarX - 1, posParams.hpBarY - 3, getLocalizedSpriteKey("overlay_hp_label"))
-      .setOrigin(1, 0);
+    this.hpLabel = this.makeCaption(posParams.hpBarX - 1, posParams.hpBarY - 3, CAPTIONS.hp, 1, 0);
     this.add(this.hpLabel);
 
     this.levelNumbersContainer = globalScene.add
@@ -665,6 +680,40 @@ export abstract class BattleInfo extends Phaser.GameObjects.Container {
         Phaser.Geom.Rectangle.Contains,
       );
     }
+  }
+
+  /**
+   * One of the small captions from {@linkcode CAPTIONS}, drawn where its sprite used to sit.
+   *
+   * The dark keyline matters as much as the letterforms here: the sprites carried a one pixel outline
+   * that is what makes green `HP` legible over a white bar, and a shadow alone does not replace it.
+   */
+  protected makeCaption(
+    x: number,
+    y: number,
+    caption: (typeof CAPTIONS)[keyof typeof CAPTIONS],
+    originX: number,
+    originY: number,
+  ): Phaser.GameObjects.Text {
+    return addTextObject(x, y, caption.text, TextStyle.BATTLE_INFO, {
+      fontFamily: SYSTEM_UI_FONT,
+      fontSize: caption.size,
+      color: caption.colour,
+    })
+      .setOrigin(originX, originY)
+      .setStroke("#212121", CAPTION_STROKE)
+      .setShadow(0, 0, "#00000000", 0);
+  }
+
+  /** Swaps the health caption between `HP` and the wider `BOSS` one a boss encounter puts there. */
+  protected setHpCaption(boss: boolean): void {
+    const caption = boss ? CAPTIONS.hpBoss : CAPTIONS.hp;
+    this.hpLabel.setText(caption.text).setColor(caption.colour);
+  }
+
+  /** The `EXP` caption, which only the player's box carries; kept here so {@linkcode CAPTIONS} can stay private. */
+  protected makeExpCaption(x: number, y: number): Phaser.GameObjects.Text {
+    return this.makeCaption(x, y, CAPTIONS.exp, 1, 1);
   }
 
   /**
