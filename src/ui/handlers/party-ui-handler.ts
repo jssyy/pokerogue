@@ -29,7 +29,7 @@ import type { TurnMove } from "#types/turn-move";
 import { MessageUiHandler } from "#ui/message-ui-handler";
 import { MoveInfoOverlay } from "#ui/move-info-overlay";
 import { PokemonIconAnimHelper } from "#ui/pokemon-icon-anim-helper";
-import { addBBCodeTextObject, addTextObject, getTextColor } from "#ui/text";
+import { addBBCodeTextObject, addTextObject, getTextColor, SYSTEM_UI_FONT } from "#ui/text";
 import { addWindow } from "#ui/ui-theme";
 import { applyChallenges } from "#utils/challenge-utils";
 import { BooleanHolder, getLocalizedSpriteKey, randInt } from "#utils/common";
@@ -1902,7 +1902,7 @@ class PartySlot extends Phaser.GameObjects.Container {
   private slotBg: Phaser.GameObjects.Image;
   private slotPb: Phaser.GameObjects.Sprite;
   public slotName: Phaser.GameObjects.Text;
-  public slotHpLabel: Phaser.GameObjects.Image;
+  public slotHpLabel: Phaser.GameObjects.Text;
   public slotHpBar: Phaser.GameObjects.Image;
   public slotHpOverlay: Phaser.GameObjects.Sprite;
   public slotHpText: Phaser.GameObjects.Text;
@@ -1996,6 +1996,18 @@ class PartySlot extends Phaser.GameObjects.Container {
     // hp bar position relative to slot background
     let hpBarPosition = { x: 8, y: 31 };
     // offsets of hp bar overlay (showing the remaining hp) and number; should not be changed.
+    // Point sizes for the readouts and captions this slot draws as type rather than as art. Each was
+    // measured against what the pixel font and the sprites actually put on screen: 53 reproduces the
+    // pixel font's figures at the party style's 48, and 38 and 32 stand as tall as the coloured body
+    // of the `Lv.` and `HP` images they replace.
+    // Left untranslated on purpose: the images these replace read "Lv." and "HP" in both languages
+    // this build ships, and inventing a locale key for a string that never changes would only make
+    // it look configurable.
+    const LV_CAPTION = "Lv.";
+    const HP_CAPTION = "HP";
+    const READOUT_SIZE = 53;
+    const LV_CAPTION_SIZE = 38;
+    const HP_CAPTION_SIZE = 32;
     const hpOverlayToBarOffset = { x: 16, y: 2 };
     const hpTextToBarOffset = { x: -3, y: -2 };
     // description position relative to slot background
@@ -2052,8 +2064,10 @@ class PartySlot extends Phaser.GameObjects.Container {
     this.slotName.setPositionRelative(this.slotBg, namePosition.x, namePosition.y);
     this.slotName.setOrigin(0);
 
-    const slotLevelLabel = globalScene.add
-      .image(0, 0, getLocalizedSpriteKey("party_slot_overlay_lv"))
+    const slotLevelLabel = addTextObject(0, 0, LV_CAPTION, TextStyle.PARTY, {
+      fontFamily: SYSTEM_UI_FONT,
+      fontSize: LV_CAPTION_SIZE,
+    })
       .setPositionRelative(this.slotBg, levelLabelPosition.x, levelLabelPosition.y)
       .setOrigin(0);
 
@@ -2062,6 +2076,7 @@ class PartySlot extends Phaser.GameObjects.Container {
       0,
       this.pokemon.level.toString(),
       this.pokemon.level < globalScene.getMaxExpLevel() ? TextStyle.PARTY : TextStyle.PARTY_RED,
+      { fontFamily: SYSTEM_UI_FONT, fontSize: READOUT_SIZE },
     )
       .setPositionRelative(slotLevelLabel, levelTextToLevelLabelOffset.x, levelTextToLevelLabelOffset.y)
       .setOrigin(0, 0.25);
@@ -2115,8 +2130,10 @@ class PartySlot extends Phaser.GameObjects.Container {
       }
     }
 
-    this.slotHpLabel = globalScene.add
-      .image(0, 0, getLocalizedSpriteKey("party_slot_overlay_hp"))
+    this.slotHpLabel = addTextObject(0, 0, HP_CAPTION, TextStyle.PARTY, {
+      fontFamily: SYSTEM_UI_FONT,
+      fontSize: HP_CAPTION_SIZE,
+    })
       .setOrigin(1, 0)
       .setVisible(false)
       .setPositionRelative(this.slotBg, hpBarPosition.x + 15, hpBarPosition.y);
@@ -2136,7 +2153,10 @@ class PartySlot extends Phaser.GameObjects.Container {
       .setScale(hpRatio, 1)
       .setVisible(false);
 
-    this.slotHpText = addTextObject(0, 0, `${this.pokemon.hp}/${this.pokemon.getMaxHp()}`, TextStyle.PARTY)
+    this.slotHpText = addTextObject(0, 0, `${this.pokemon.hp}/${this.pokemon.getMaxHp()}`, TextStyle.PARTY, {
+      fontFamily: SYSTEM_UI_FONT,
+      fontSize: READOUT_SIZE,
+    })
       .setOrigin(1, 0)
       .setPositionRelative(
         this.slotHpBar,
