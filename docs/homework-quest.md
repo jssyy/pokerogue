@@ -180,3 +180,63 @@ python scripts/build-guide-pages.py <那个目录>
 ```
 
 会就地覆盖 `guide-dex.html` 和 `guide-items.html`。`guide.html` 是手写的，不由脚本生成。
+
+## 跟上游保持同步
+
+上游（`pagefaultgames/pokerogue`）的玩法一直在更新，这个分支要定期把它拉进来。
+
+```bash
+git fetch origin beta
+git merge origin/beta
+npx tsc --noEmit -p tsconfig.json
+npx vitest run test/tests/ui test/tests/system
+git push fork feat/homework-quest
+```
+
+**用 merge，不要 rebase。** 这个分支已经推到 fork 上，rebase 会重写历史；而且冲突真出现时，merge 只需要解一次，rebase 要在每个提交上重解一遍。
+
+**别往上游提 PR。** 这是家用改版，`origin` 只用来拉取。推送一律推 `fork`。
+
+### 为什么合并一直很轻松
+
+改动的形状决定了合并成本，不是改动的大小：
+
+| | 数量 | 会不会冲突 |
+| --- | --- | --- |
+| 新增文件 | 27 个、6000 多行 | 永不冲突 |
+| 修改上游文件 | 22 个、约 +535 / −74 行 | 只有这些会 |
+
+上游最近一次更新动了 107 个文件，其中 4 个我们也碰过（`battle-scene`、`loading-scene`、`title-phase`、`ui`），**全部自动合并成功**——因为我们在这些文件里放的是几行长的钩子，不是重写。
+
+### 上游文件的改动点
+
+新功能尽量继续走「新文件 + 一个几行的钩子」，这张表就不会变长，合并也就一直便宜。
+
+| 文件 | 改动 |
+| --- | --- |
+| `src/ui/battle-info/battle-info.ts` | +109 / −16 |
+| `src/phases/title-phase.ts` | +77 / −4 |
+| `src/ui/containers/starter-summary.ts` | +54 / −7 |
+| `src/ui/handlers/menu-ui-handler.ts` | +50 / −3 |
+| `src/i18n.ts` | +44 / −0 |
+| `src/loading-scene.ts` | +34 / −3 |
+| `src/ui/text.ts` | +33 / −0 |
+| `src/ui/handlers/party-ui-handler.ts` | +27 / −7 |
+| `src/battle-scene.ts` | +20 / −3 |
+| `src/ui/ui.ts` | +19 / −1 |
+| `src/main.ts` | +10 / −0 |
+| `src/enums/ui-mode.ts` | +9 / −0 |
+| `vite.config.ts` | +8 / −0 |
+| `src/phases/new-battle-phase.ts` | +7 / −0 |
+| `index.css` | +5 / −0 |
+| `src/ui/containers/starter-container.ts` | +4 / −2 |
+| `src/ui/battle-info/player-battle-info.ts` | +4 / −16 |
+| `test/mocks/mocks-container/mock-input-text.ts` | +4 / −0 |
+| `test/mocks/mocks-container/mock-container.ts` | +4 / −0 |
+| `test/framework/game-manager.ts` | +4 / −0 |
+| `src/init/init.ts` | +2 / −0 |
+| `src/ui/battle-info/enemy-battle-info.ts` | +1 / −2 |
+
+冲突真发生时，绝大多数会落在这几个大头上：`battle-info.ts`（字体与数值排版）、`title-phase.ts`（作业主界面接管标题）、`menu-ui-handler.ts`（菜单项）。这三处的改动意图都写在各自的注释里，照着重新套用即可。
+
+> 子模块（`assets/`、`locales/`）由上游管理，我们从不提交进去；合并后如果 `git status` 显示子模块有变化，用 `git submodule update --init` 对齐即可。
