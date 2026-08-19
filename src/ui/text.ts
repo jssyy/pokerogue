@@ -24,6 +24,26 @@ import type InputText from "phaser3-rex-plugins/plugins/inputtext";
 export const SYSTEM_UI_FONT =
   "'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'Source Han Sans SC', 'Heiti SC', SimHei, sans-serif, emerald";
 
+/**
+ * The size adjustments `initFonts` uses when it lends the system face to each pixel family for
+ * Chinese. Naming {@linkcode SYSTEM_UI_FONT} on a text object skips that machinery, so anything that
+ * wants to stay the size it already was has to fold the same figure into its point size.
+ *
+ * Keep these in step with the `sizeAdjust` values in `i18n.ts`.
+ */
+const SYSTEM_FONT_ADJUST: Record<string, number> = { emerald: 0.81, pkmnems: 1.08 };
+
+/**
+ * The point size at which {@linkcode SYSTEM_UI_FONT} draws a style's Chinese at exactly the size that
+ * style already draws it, whichever pixel family and per-language size it happens to use.
+ */
+export function systemFontSize(style: TextStyle, extraStyleOptions?: Phaser.Types.GameObjects.Text.TextStyle): number {
+  const { styleOptions } = getTextStyleOptions(style, extraStyleOptions);
+  const options = styleOptions as Phaser.Types.GameObjects.Text.TextStyle;
+  const size = Number.parseInt(String(options.fontSize), 10);
+  return Math.round(size * (SYSTEM_FONT_ADJUST[String(options.fontFamily)] ?? 1));
+}
+
 export function addTextObject(
   x: number,
   y: number,
