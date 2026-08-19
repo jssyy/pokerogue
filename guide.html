@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>作业勇者 · 游戏指南</title>
+<style>
+  :root {
+    --ink: #eceaf2;
+    --ink-dim: #a9a3bb;
+    --ink-faint: #6f6883;
+    --bg: #1b1823;
+    --panel: #2a2436;
+    --panel-2: #332b42;
+    --line: #453c58;
+    --accent: #e8542f;
+    --accent-soft: #f0855f;
+    --gold: #f2c14e;
+    --green: #4fc98a;
+    --blue: #56a8e8;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; scroll-padding-top: 1rem; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.75 "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC", system-ui, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  a { color: var(--accent-soft); }
+
+  .shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 40px; max-width: 1180px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* ---- side navigation ------------------------------------------------ */
+  nav {
+    position: sticky; top: 0; align-self: start;
+    max-height: 100vh; overflow-y: auto;
+    padding: 28px 0;
+  }
+  nav .brand { font-size: 1.15rem; font-weight: 700; color: var(--gold); letter-spacing: .04em; margin-bottom: 4px; }
+  nav .brand small { display: block; font-size: .72rem; font-weight: 400; color: var(--ink-faint); letter-spacing: 0; }
+  nav ol { list-style: none; margin: 20px 0 0; padding: 0; counter-reset: sec; }
+  nav li { counter-increment: sec; }
+  nav a {
+    display: block; padding: 5px 10px; border-left: 2px solid transparent;
+    color: var(--ink-dim); text-decoration: none; font-size: .9rem;
+  }
+  nav a::before { content: counter(sec) "."; color: var(--ink-faint); margin-right: 7px; font-variant-numeric: tabular-nums; }
+  nav a:hover { color: var(--ink); border-left-color: var(--accent); background: #ffffff0a; }
+
+  /* ---- content -------------------------------------------------------- */
+  main { padding: 28px 0; min-width: 0; counter-reset: sec2; }
+
+  header.hero { border-bottom: 1px solid var(--line); padding-bottom: 24px; margin-bottom: 8px; }
+  header.hero h1 { font-size: 1.9rem; margin: 0 0 6px; color: var(--gold); }
+  header.hero p { margin: 0; color: var(--ink-dim); }
+
+  section { padding-top: 44px; }
+  h2 { font-size: 1.35rem; margin: 0 0 4px; }
+  h2 { counter-increment: sec2; }
+  h2::before { content: counter(sec2); color: var(--accent); margin-right: 10px; font-variant-numeric: tabular-nums; }
+  h2 + .lede { color: var(--ink-dim); margin: 0 0 18px; }
+  h3 { font-size: 1.02rem; margin: 26px 0 8px; color: var(--accent-soft); }
+
+  p, li { color: var(--ink); }
+  ul, ol { padding-left: 1.3em; }
+  li { margin: 5px 0; }
+
+  code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; font-size: .88em; font-family: ui-monospace, Consolas, monospace; }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; margin: 16px 0; }
+  .card h3 { margin-top: 0; }
+
+  .note { border-left: 3px solid var(--gold); background: #f2c14e12; padding: 12px 16px; border-radius: 0 var(--radius) var(--radius) 0; margin: 16px 0; }
+  .note strong { color: var(--gold); }
+  .warn { border-left-color: var(--accent); background: #e8542f12; }
+  .warn strong { color: var(--accent-soft); }
+
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: .92rem; }
+  th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--panel-2); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .scroller { overflow-x: auto; margin: 14px 0; border: 1px solid var(--line); border-radius: var(--radius); }
+  .scroller table { margin: 0; border: 0; }
+  .scroller th, .scroller td { border-color: #ffffff14; }
+
+  /* ---- type chart ----------------------------------------------------- */
+  #chart table { font-size: .8rem; border-collapse: separate; border-spacing: 0; }
+  #chart th, #chart td { padding: 0; text-align: center; white-space: nowrap; }
+  #chart thead th { position: sticky; top: 0; z-index: 2; background: var(--panel-2); }
+  #chart tbody th { position: sticky; left: 0; z-index: 1; }
+  #chart .cell { display: block; width: 34px; height: 30px; line-height: 30px; font-variant-numeric: tabular-nums; }
+  #chart .t { display: block; padding: 5px 6px; color: #12101a; font-weight: 700; font-size: .74rem; }
+  #chart .x2 { background: #2f6b45; color: #b9f2d0; }
+  #chart .x05 { background: #6b2f2f; color: #f2c0c0; }
+  #chart .x0 { background: #17141f; color: #6f6883; }
+  #chart .x1 { color: #4a4358; }
+
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; color: var(--ink-dim); font-size: .88rem; margin-top: 10px; }
+  .legend span b { display: inline-block; width: 26px; text-align: center; border-radius: 3px; margin-right: 6px; }
+
+  footer { border-top: 1px solid var(--line); margin-top: 64px; padding-top: 20px; color: var(--ink-faint); font-size: .85rem; }
+
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: 1fr; gap: 0; padding: 0 18px 64px; }
+    nav { position: static; max-height: none; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+    nav ol { display: flex; flex-wrap: wrap; gap: 2px 0; margin-top: 12px; }
+    nav a { border-left: 0; border-bottom: 2px solid transparent; padding: 4px 9px; }
+    nav a:hover { border-left: 0; border-bottom-color: var(--accent); }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<nav>
+  <div class="brand">作业勇者<small>PokéRogue 上手指南</small></div>
+  <ol>
+    <li><a href="#start">三分钟上手</a></li>
+    <li><a href="#stamina">体力：怎么赚，怎么花</a></li>
+    <li><a href="#run">一局冒险长什么样</a></li>
+    <li><a href="#battle">战斗：四个指令</a></li>
+    <li><a href="#chart">属性相克全表</a></li>
+    <li><a href="#stats">能力值</a></li>
+    <li><a href="#ability">特性</a></li>
+    <li><a href="#growth">成长路径</a></li>
+    <li><a href="#items">道具与强化</a></li>
+    <li><a href="#catch">精灵球与捕获</a></li>
+    <li><a href="#egg">蛋、扭蛋与糖果</a></li>
+    <li><a href="#save">存档规则</a></li>
+    <li><a href="#parent">家长指南</a></li>
+    <li><a href="#faq">常见问题</a></li>
+  </ol>
+  <p style="margin:18px 0 0;padding-top:14px;border-top:1px solid var(--line)">
+    <a href="./guide-dex.html" style="font-size:.9rem">宝可梦图鉴 →</a><br />
+    <a href="./guide-items.html" style="font-size:.9rem">道具图鉴 →</a>
+  </p>
+</nav>
+
+<main>
+
+<header class="hero">
+  <h1>作业勇者 · 游戏指南</h1>
+  <p>这一版把「认真写作业」变成了进入游戏的钥匙。下面先讲我们自己加的规则，再讲原版 PokéRogue 的玩法。</p>
+</header>
+
+<!-- 1 -->
+<section id="start">
+  <h2>三分钟上手</h2>
+  <p class="lede">第一次玩，照这个顺序走一遍就懂了。</p>
+  <ol>
+    <li><b>家长先布置任务。</b>主界面选「菜单… → 家长模式」，输入密码（初始 <code>1234</code>），再选「新建任务」。</li>
+    <li><b>孩子写完，自己标记完成。</b>退出家长模式，选中那条任务 → 「我做完了」。<b>此时不加体力。</b></li>
+    <li><b>家长打分。</b>再进家长模式，给这条任务打 1–5 星。<b>体力这时才到账。</b></li>
+    <li><b>出发。</b>体力够 30 就能选「出发冒险 → 新游戏」，正式开打。</li>
+  </ol>
+  <div class="note">
+    <strong>为什么分成两步？</strong>孩子只能报告「做完了」，<b>打分权在家长</b>。所以分数代表「有大人看过」，不是「我说做完就算」。
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="stamina">
+  <h2>体力：怎么赚，怎么花</h2>
+  <p class="lede">体力是这一版唯一的通行证。没有体力就进不去游戏。</p>
+
+  <h3>星级怎么换体力</h3>
+  <table>
+    <thead><tr><th>评分</th><th class="num">体力</th><th>含义</th></tr></thead>
+    <tbody>
+      <tr><td>★</td><td class="num">2</td><td>糊弄过去了</td></tr>
+      <tr><td>★★</td><td class="num">5</td><td>做了，但很毛躁</td></tr>
+      <tr><td>★★★</td><td class="num">10</td><td>正常完成</td></tr>
+      <tr><td>★★★★</td><td class="num">18</td><td>认真，有检查</td></tr>
+      <tr><td>★★★★★</td><td class="num">30</td><td>工整、全对、态度好</td></tr>
+    </tbody>
+  </table>
+  <div class="note">
+    <strong>这条曲线是故意做成上凸的。</strong>五个 1 星任务只值 10 点，一个 5 星任务值 30 点。<b>多刷任务量是划不来的，认真做一件才划算。</b>
+  </div>
+
+  <h3>额外奖励</h3>
+  <ul>
+    <li><b>当天全部完成</b>：+10</li>
+    <li><b>当天平均 4 星以上</b>：再 +20</li>
+    <li><b>连续认真</b>：每多一天 +3，最多累计 7 天（+21）</li>
+    <li><b>补评扣半</b>：任务计划日之后超过 1 天才打分，体力只算一半</li>
+  </ul>
+  <p>没有安排任务的日子是<b>中性</b>的——不加分，也不会中断连续记录。所以周末不布置作业，连续天数不会断。</p>
+
+  <h3>体力花在哪</h3>
+  <table>
+    <thead><tr><th>用途</th><th class="num">消耗</th></tr></thead>
+    <tbody>
+      <tr><td>开新游戏</td><td class="num">30</td></tr>
+      <tr><td>继续 / 读取存档</td><td class="num">10</td></tr>
+      <tr><td>每前进 10 波（路费）</td><td class="num">10</td></tr>
+      <tr><td>学习商店 · 普通蛋券</td><td class="num">60</td></tr>
+      <tr><td>学习商店 · 高级蛋券</td><td class="num">150</td></tr>
+      <tr><td>学习商店 · 特级蛋券</td><td class="num">400</td></tr>
+      <tr><td>学习商店 · 糖果雨</td><td class="num">80</td></tr>
+    </tbody>
+  </table>
+  <div class="note warn">
+    <strong>打到一半没体力了会怎样？</strong>不会丢进度。游戏会自动存档并退回主界面，和你自己选「保存并退出」是同一条路。补完作业拿到体力，选「继续」就能接着打。
+  </div>
+  <p>第一次打开游戏会先送 30 点，正好够开一局——不然新装的游戏就是一扇打不开的门。</p>
+</section>
+
+<!-- 3 -->
+<section id="run">
+  <h2>一局冒险长什么样</h2>
+  <p class="lede">PokéRogue 是 roguelite：一局从头打到尾，死了就从头再来，但图鉴、糖果、蛋这些是永久保留的。</p>
+  <ul>
+    <li>经典模式一局是 <b>1 到 200 波</b>，打完 200 波通关。</li>
+    <li><b>每 10 的倍数波是 Boss</b>（血条上会出现 <code>BOSS</code> 标记，且有护盾层数）。</li>
+    <li><b>逢 5 和逢 10 常见训练家战</b>；每 30 波左右会遇到道馆馆主级别的对手。</li>
+    <li>每过一段会切换<b>生态环境</b>（群系），能遇到的宝可梦跟着变。全游戏共 35 个群系，从「城镇」「草原」一路到「深渊」「太空」「终端」。</li>
+    <li>每场胜利后可以三选一拿<b>强化道具</b>，这是变强的主要途径——比升级重要得多。</li>
+  </ul>
+  <div class="note">
+    <strong>本版特有：</strong>每前进 10 波会扣 10 点体力（路费）。想打得远，作业得跟上。
+  </div>
+</section>
+
+<!-- 4 -->
+<section id="battle">
+  <h2>战斗：四个指令</h2>
+  <table>
+    <thead><tr><th>指令</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td><b>战斗</b></td><td>选一个招式攻击。每个招式有 PP（可用次数），用完就不能再用。</td></tr>
+      <tr><td><b>精灵球</b></td><td>扔球捕获野生宝可梦。对训练家的宝可梦无效。</td></tr>
+      <tr><td><b>宝可梦</b></td><td>换人上场。换人要消耗一个回合，对手会先打一下。</td></tr>
+      <tr><td><b>逃跑</b></td><td>逃离野生战斗。速度越快成功率越高；训练家战不能逃。</td></tr>
+    </tbody>
+  </table>
+
+  <h3>招式的三个数字</h3>
+  <ul>
+    <li><b>威力</b>：基础伤害。0 或 <code>—</code> 表示是变化招式（上状态、加能力，不直接造成伤害）。</li>
+    <li><b>命中</b>：命中率百分比。<code>—</code> 表示必中。</li>
+    <li><b>PP</b>：这一招<b>还能用几次</b>，见下。</li>
+  </ul>
+
+  <h3>PP 是什么</h3>
+  <p><b>PP 就是这个招式的剩余次数</b>（Power Point）。招式栏里写成 <code>35/35</code>：右边是上限，左边是还剩多少。每用一次减 1，减到 0 这一招就<b>用不了了</b>，会变灰。</p>
+  <ul>
+    <li>威力越大的招，PP 上限通常越少——「撞击」有 35 次，很多强力招只有 5 到 10 次。</li>
+    <li>四个招式的 PP <b>全部用光</b>时，宝可梦只能使出「挣扎」：威力很低，还会反伤自己。</li>
+    <li>PP 不会随战斗结束自动回满。要靠<b>神秘之果 / PP 回复类道具</b>，或者到下一个休息点。</li>
+  </ul>
+  <div class="note">
+    <strong>给孩子的说法：</strong>PP 就像「这一招还剩几发子弹」。杂鱼用小招（PP 多的）省着点，Boss 再放大招。</div>
+
+  <h3>选招式时看那个小角标</h3>
+  <p>招式列表右侧会显示这一招打在当前对手身上的<b>效果倍率</b>（<code>2×</code>、<code>0.5×</code> 之类）。这是最省事的判断依据——不用背表，看角标就行。倍率怎么来的见下一节。</p>
+</section>
+
+<!-- 5 -->
+<section id="chart">
+  <h2>属性相克全表</h2>
+  <p class="lede">横轴是<b>攻击方</b>属性，纵轴是<b>防守方</b>属性。表格数据直接取自本作代码，不是抄来的。</p>
+  <div class="scroller">
+    <table id="type-chart"></table>
+  </div>
+  <div class="legend">
+    <span><b class="x2">2×</b>效果拔群</span>
+    <span><b class="x05">½</b>效果不佳</span>
+    <span><b class="x0">0</b>没有效果</span>
+    <span><b class="x1">1</b>一般</span>
+  </div>
+  <div class="note">
+    <strong>双属性会相乘。</strong>比如水打「地面/岩石」= 2 × 2 = <b>4 倍</b>；电打「水/飞行」= 2 × 2 = 4 倍；而电打「水/地面」= 2 × 0 = <b>0</b>，一点伤害都没有。
+  </div>
+  <div class="note">
+    <strong>本系加成（STAB）：</strong>用和自己属性相同的招式，伤害额外 ×1.5。所以火系宝可梦用火招，比用同威力的其他招更疼。
+  </div>
+</section>
+
+<!-- stats -->
+<section id="stats">
+  <h2>能力值</h2>
+  <p class="lede">每只宝可梦有六项能力值。看懂它们，才知道一只宝可梦该干什么。</p>
+  <table>
+    <thead><tr><th>能力</th><th>作用</th></tr></thead>
+    <tbody>
+      <tr><td><b>HP</b></td><td>血量。归零就倒下。</td></tr>
+      <tr><td><b>攻击</b></td><td>决定<b>物理</b>招式的伤害。</td></tr>
+      <tr><td><b>防御</b></td><td>减免对方<b>物理</b>招式的伤害。</td></tr>
+      <tr><td><b>特攻</b></td><td>决定<b>特殊</b>招式的伤害。</td></tr>
+      <tr><td><b>特防</b></td><td>减免对方<b>特殊</b>招式的伤害。</td></tr>
+      <tr><td><b>速度</b></td><td>决定谁先出手。同回合快的先打——常常等于多打一轮。</td></tr>
+    </tbody>
+  </table>
+  <div class="note">
+    <strong>物理还是特殊，看招式不看属性。</strong>同为火系，「火焰拳」是物理、「喷射火焰」是特殊。招式详情里会标明。所以一只高攻击的宝可梦带特殊招，是浪费。
+  </div>
+
+  <h3>三个让同种宝可梦不一样的东西</h3>
+  <ul>
+    <li><b>个体值（IV）</b>：每项 0–31 的先天资质，抓到就固定了。波数越深的野生个体，个体值下限越高。用糖果可以永久提高该<b>种族</b>下次的初始个体值。</li>
+    <li><b>性格</b>：会让一项能力 <b>+10%</b>、另一项 <b>−10%</b>（也有完全中性的性格）。选人界面可以看到，标了 ↑↓ 箭头。</li>
+    <li><b>等级</b>：升级会全面提升能力值。但在本作里，<b>道具带来的成长远大于等级</b>。</li>
+  </ul>
+
+  <h3>战斗中的临时增减</h3>
+  <p>像「叫声」「电磁波」这类招式，改变的是<b>能力等级</b>，范围 <b>−6 到 +6</b>，只在本场战斗有效，换人下场就清空。</p>
+  <ul>
+    <li>+1 级约为原值的 1.5 倍，+2 级约 2 倍，以此类推。</li>
+    <li>命中率和闪避率也按同样的等级机制变化。</li>
+  </ul>
+  <p>战斗中按住 <kbd>V</kbd> 可以调出双方的能力等级浮窗，确认自己是被降了攻击还是对方提了防御。</p>
+</section>
+
+<!-- 6 -->
+<section id="ability">
+  <h2>特性</h2>
+  <p class="lede">每只宝可梦有一个「特性」，是被动效果，不占招式栏，整场战斗一直生效。</p>
+  <p>在选人界面和队伍详情里能看到当前特性的名字和说明。常见的几类：</p>
+  <ul>
+    <li><b>免疫类</b>：直接挡掉某个属性。例如「引火」让火招无效并提升自己火招威力；「储电」让电招无效并回血。</li>
+    <li><b>能力变化类</b>：上场或受击时改变能力值。例如「威吓」上场时降低对手攻击。</li>
+    <li><b>天气类</b>：上场时改变天气，进而影响双方伤害。</li>
+    <li><b>伤害修正类</b>：例如「茂盛」在血量低于三分之一时提高草招威力。</li>
+  </ul>
+  <div class="note">
+    <strong>隐藏特性</strong>：部分宝可梦有第三个稀有特性，图标是一个胶囊。抓到带隐藏特性的个体会在图鉴里永久解锁。
+  </div>
+  <p>本作还有<b>被动特性</b>（Passive）：用糖果解锁后，宝可梦会额外获得第二个特性。这是让弱势宝可梦翻身的主要手段。</p>
+</section>
+
+<!-- growth -->
+<section id="growth">
+  <h2>成长路径</h2>
+  <p class="lede">一只宝可梦从抓到手到成型，会经过下面几步。前三步属于「这一局」，后两步是<b>跨局永久积累</b>。</p>
+
+  <h3>① 升级</h3>
+  <p>战斗胜利获得经验。队伍中未上场的成员经验较少，带「经验分享」可以让全队一起涨。不同种族的<b>成长速度</b>不同（很慢／慢／中等／快／很快等），界面上会写明——成长慢的后期更强，但前期吃亏。</p>
+
+  <h3>② 进化</h3>
+  <p>本作的进化条件比正统作品更杂，常见的有：</p>
+  <table>
+    <thead><tr><th>条件</th><th>例子</th></tr></thead>
+    <tbody>
+      <tr><td>达到等级</td><td>最常见，绝大多数宝可梦</td></tr>
+      <tr><td>亲密度足够</td><td>需要一起战斗积累好感</td></tr>
+      <tr><td>持有特定道具</td><td>戴上某个道具后升级</td></tr>
+      <tr><td>使用进化石</td><td>火之石、水之石等，从道具三选一里拿</td></tr>
+      <tr><td>处于特定生态环境</td><td>只有在某个群系里才会进化</td></tr>
+      <tr><td>白天／夜晚</td><td>时间条件</td></tr>
+      <tr><td>特定天气</td><td>场上天气满足才行</td></tr>
+      <tr><td>学会某个招式</td><td>或队伍里有某属性的伙伴</td></tr>
+      <tr><td>性别／性格限定</td><td>同一种族分化成不同结果</td></tr>
+    </tbody>
+  </table>
+  <div class="note">
+    <strong>满足条件时会自动提示。</strong>不用去记——该进化的时候游戏会问你。按 <kbd>取消</kbd> 可以推迟进化（有些宝可梦不进化能更早学会招式）。
+  </div>
+
+  <h3>③ 学招式</h3>
+  <ul>
+    <li><b>升级学会</b>：到等级自动提示替换，最多带 4 个。</li>
+    <li><b>招式机（TM）</b>：从道具三选一里获得，可以教一个新招。</li>
+    <li><b>蛋招式</b>：每个种族有 4 个专属蛋招式，孵蛋或用糖果解锁。选人界面下方那一排 <code>???</code> 就是还没解锁的蛋招式。</li>
+  </ul>
+  <div class="note">
+    <strong>配招建议：</strong>尽量覆盖不同属性，别四个招都同属性——遇到免疫就完全打不动了。留一个变化招（强化自身或削弱对手）通常比四个攻击招更耐用。
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">查每一只的成长路径</h3>
+    <p style="margin:0 0 10px">全部 1084 只宝可梦、571 条进化家族，按 <b>初始 → 中级 → 终极</b> 排好，附六项能力值、属性、特性和开局花费。可以按名字搜、按属性筛、点表头排序。</p>
+    <p style="margin:0"><a href="./guide-dex.html"><b>打开宝可梦图鉴 →</b></a></p>
+  </div>
+
+  <h3>④ 糖果（跨局永久）</h3>
+  <p>每抓到一只该种族的宝可梦就积累糖果。糖果花在三个地方：</p>
+  <ul>
+    <li>提高该种族<b>下次开局的初始个体值</b></li>
+    <li>解锁<b>被动特性</b>——等于白送第二个特性，是弱势宝可梦翻身的关键</li>
+    <li>降低<b>开局花费</b>，让强力宝可梦更容易塞进 10 点预算里</li>
+  </ul>
+
+  <h3>⑤ 图鉴解锁（跨局永久）</h3>
+  <p>首次抓到某种族，就永久解锁它作为<b>初始宝可梦</b>的资格，下一局开局可以直接选。抓到异色、隐藏特性的个体，也会分别永久记录下来。</p>
+  <div class="note">
+    <strong>所以打输并不亏。</strong>这一局的队伍没了，但糖果、图鉴、蛋、解锁的初始者全都留着。每一局都在给下一局垫高起点。
+  </div>
+</section>
+
+<!-- 7 -->
+<section id="items">
+  <h2>道具与强化</h2>
+  <p class="lede">这是 PokéRogue 最核心、也最容易被新手忽略的系统。每场胜利后的三选一，决定了你能走多远。</p>
+  <table>
+    <thead><tr><th>类别</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td><b>可叠加强化</b></td><td>力量护腕、专爱系列、属性宝石等。同一个道具拿多个会<b>叠加</b>，这是滚雪球的关键。</td></tr>
+      <tr><td><b>回复类</b></td><td>伤药、活力碎片、PP 回复。带在身上，战斗结束自动生效或手动使用。</td></tr>
+      <tr><td><b>经验类</b></td><td>经验分享、幸运蛋。让全队或单只升级更快。</td></tr>
+      <tr><td><b>进化道具</b></td><td>各种石头、进化用的特殊道具。</td></tr>
+      <tr><td><b>精灵球</b></td><td>补充球的库存。</td></tr>
+    </tbody>
+  </table>
+  <div class="note">
+    <strong>新手最容易犯的错：</strong>每次都选回复道具。前期血线不紧的时候，<b>优先拿能叠加的强化</b>，越早叠起来后面越轻松。
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">每样道具具体做什么</h3>
+    <p style="margin:0 0 10px">92 种道具的图标、名字和作用说明，可以搜索。</p>
+    <p style="margin:0"><a href="./guide-items.html"><b>打开道具图鉴 →</b></a></p>
+  </div>
+  <p>三选一界面还能<b>转移道具</b>（把某只身上的强化换到另一只）和<b>刷新</b>（花钱换一批新的），左右方向键切换。</p>
+</section>
+
+<!-- 8 -->
+<section id="catch">
+  <h2>精灵球与捕获</h2>
+  <ul>
+    <li>血越少、带上异常状态（睡眠、麻痹等），捕获率越高。</li>
+    <li>球的等级越高越好抓：<b>精灵球 &lt; 超级球 &lt; 高级球 &lt; 大师球</b>（大师球必定成功）。</li>
+    <li>队伍满 6 只时再抓，会问你放生哪一只或直接送走。</li>
+    <li>首次抓到某个种族，会解锁图鉴与该种族的<b>初始者资格</b>——下一局开局就能直接选它。</li>
+  </ul>
+  <div class="note">
+    <strong>抓 Boss 很划算。</strong>Boss 有护盾，需要先把护盾打光。抓到的 Boss 通常个体值更好。
+  </div>
+</section>
+
+<!-- 9 -->
+<section id="egg">
+  <h2>蛋、扭蛋与糖果</h2>
+  <h3>蛋</h3>
+  <p>蛋分四档：<b>普通 → 稀有 → 史诗 → 传说</b>。蛋需要走一定波数才会孵化，孵出来的个体值和异色概率更好。</p>
+  <h3>扭蛋机</h3>
+  <p>用蛋券抽蛋。蛋券可以在游戏内获得，本版也可以用体力在「学习商店」直接买（见第 2 节价格表）。</p>
+  <h3>糖果</h3>
+  <p>每抓到一只某种族的宝可梦，就积累该种族的糖果。糖果可以用来：</p>
+  <ul>
+    <li>提升该种族的<b>初始个体值</b></li>
+    <li>解锁<b>被动特性</b></li>
+    <li>降低开局<b>花费</b>，让强力宝可梦更容易带上场</li>
+  </ul>
+  <p>本版的「糖果雨」商品会给 3 只已收服宝可梦各 +5 糖果。</p>
+  <h3>幸运值</h3>
+  <p>队伍里异色宝可梦越多，<b>幸运值</b>越高，掉落的道具品质越好。</p>
+</section>
+
+<!-- 10 -->
+<section id="save">
+  <h2>存档规则</h2>
+  <p class="lede">很多人以为关掉网页就存好了——<b>并不是</b>。</p>
+  <table>
+    <thead><tr><th>会自动存档的时刻</th></tr></thead>
+    <tbody>
+      <tr><td>每一波战斗<b>开始</b>时</td></tr>
+      <tr><td>游戏结束（全员倒下）时</td></tr>
+      <tr><td>在菜单里选「保存并退出」时</td></tr>
+      <tr><td>扭蛋抽奖后</td></tr>
+      <tr><td>体力耗尽被请出游戏时</td></tr>
+    </tbody>
+  </table>
+  <div class="note warn">
+    <strong>直接关标签页不会存档。</strong>最多丢掉当前这一波。要保险，用菜单里的「保存并退出」。
+  </div>
+</section>
+
+<!-- 11 -->
+<section id="parent">
+  <h2>家长指南</h2>
+  <p class="lede">家长模式在主界面「菜单… → 家长模式」，初始密码 <code>1234</code>，进去后请在「家长设置」里改掉。</p>
+  <h3>能做什么</h3>
+  <ul>
+    <li><b>新建任务</b>：按日期给某一天安排作业。</li>
+    <li><b>打分</b>：给已完成的任务打 1–5 星，体力这时才发放。</li>
+    <li><b>家长设置</b>：改密码、开关体力门禁、给今天发一次免费通行、直接发放体力。</li>
+  </ul>
+  <h3>几条设计上的取舍，供参考</h3>
+  <ul>
+    <li>每次进入计划表，家长权限都要<b>重新输密码</b>，孩子拿到设备不会直接继承权限。</li>
+    <li>星级曲线上凸，是为了让「认真做一件」优于「草草做五件」。</li>
+    <li>没安排任务的日子不影响连续记录，避免为了保连续而硬布置作业。</li>
+    <li>体力耗尽从不惩罚进度，避免把「没写作业」变成「游戏进度被毁」这种过度惩罚。</li>
+    <li>关掉门禁后，游戏会恢复成原版标题界面，随时可以退回普通玩法。</li>
+  </ul>
+  <p>全部可调参数集中在 <code>src/system/homework-config.ts</code>，调整思路写在 <code>docs/homework-quest.md</code>。</p>
+</section>
+
+<!-- 12 -->
+<section id="faq">
+  <h2>常见问题</h2>
+
+  <h3>怎么关掉背景音乐？</h3>
+  <p>设置 → 音频 → 音乐音量调到 0。</p>
+
+  <h3>战斗时突然弹出一堆能力数值？</h3>
+  <p>那是能力值浮窗，按住 <kbd>V</kbd> 会显示。如果它一直不消失，通常是按键卡住了；在「设置 → 显示」里可以关掉这个浮窗。</p>
+
+  <h3>「继续」和「加载游戏」有什么区别？</h3>
+  <p>「继续」直接回到最近一次的存档；「加载游戏」让你从多个存档位里挑一个。两者都消耗 10 点体力。</p>
+
+  <h3>打输了会失去什么？</h3>
+  <p>这一局的队伍和道具没了，要重开。但图鉴、糖果、蛋、解锁的初始者<b>都保留</b>。roguelite 就是这样：单局会归零，账户在长期变强。</p>
+
+  <h3>为什么有的宝可梦开局选不了？</h3>
+  <p>开局有花费预算（界面右下角显示 <code>x/10</code>）。越强的宝可梦花费越高。攒该种族的糖果可以降低它的花费。</p>
+
+  <h3>字看不清 / 画面糊？</h3>
+  <p>这一版已经把中文、等级、血量、波次、金钱等改成了矢量字体，并让画布按整数倍对齐像素。如果仍然发虚，把浏览器缩放调回 100%，或把窗口拉大一点。</p>
+</section>
+
+<footer>
+  <p>本手册随游戏一起离线打开，不联网。数据（属性相克表、波次规则、体力参数）直接取自本仓库代码。</p>
+  <p>本作基于开源项目 <b>PokéRogue</b>（Pagefault Games）二次开发，仅供家庭内部使用，与宝可梦官方无关。</p>
+</footer>
+
+</main>
+</div>
+
+<script>
+// The chart is kept as data rather than 324 hand-written cells: rows are the attacking type, columns
+// the defending one, in the order below. Values are lifted from the game's own type chart.
+const TYPES = [
+  ["一般", "#a8a878"], ["格斗", "#c03028"], ["飞行", "#a890f0"], ["毒", "#a040a0"],
+  ["地面", "#e0c068"], ["岩石", "#b8a038"], ["虫", "#a8b820"], ["幽灵", "#705898"],
+  ["钢", "#b8b8d0"], ["火", "#f08030"], ["水", "#6890f0"], ["草", "#78c850"],
+  ["电", "#f8d030"], ["超能", "#f85888"], ["冰", "#98d8d8"], ["龙", "#7038f8"],
+  ["恶", "#705848"], ["妖精", "#ee99ac"],
+];
+
+const CHART = [
+  "1,1,1,1,1,0.5,1,0,0.5,1,1,1,1,1,1,1,1,1",
+  "2,1,0.5,0.5,1,2,0.5,0,2,1,1,1,1,0.5,2,1,2,0.5",
+  "1,2,1,1,1,0.5,2,1,0.5,1,1,2,0.5,1,1,1,1,1",
+  "1,1,1,0.5,0.5,0.5,1,0.5,0,1,1,2,1,1,1,1,1,2",
+  "1,1,0,2,1,2,0.5,1,2,2,1,0.5,2,1,1,1,1,1",
+  "1,0.5,2,1,0.5,1,2,1,0.5,2,1,1,1,1,2,1,1,1",
+  "1,0.5,0.5,0.5,1,1,1,0.5,0.5,0.5,1,2,1,2,1,1,2,0.5",
+  "0,1,1,1,1,1,1,2,1,1,1,1,1,2,1,1,0.5,1",
+  "1,1,1,1,1,2,1,1,0.5,0.5,0.5,1,0.5,1,2,1,1,2",
+  "1,1,1,1,1,0.5,2,1,2,0.5,0.5,2,1,1,2,0.5,1,1",
+  "1,1,1,1,2,2,1,1,1,2,0.5,0.5,1,1,1,0.5,1,1",
+  "1,1,0.5,0.5,2,2,0.5,1,0.5,0.5,2,0.5,1,1,1,0.5,1,1",
+  "1,1,2,1,0,1,1,1,1,1,2,0.5,0.5,1,1,0.5,1,1",
+  "1,2,1,2,1,1,1,1,0.5,1,1,1,1,0.5,1,1,0,1",
+  "1,1,2,1,2,1,1,1,0.5,0.5,0.5,2,1,1,0.5,2,1,1",
+  "1,1,1,1,1,1,1,1,0.5,1,1,1,1,1,1,2,1,0",
+  "1,0.5,1,1,1,1,1,2,1,1,1,1,1,2,1,1,0.5,0.5",
+  "1,2,1,0.5,1,1,1,1,0.5,0.5,1,1,1,1,1,2,2,1",
+].map(row => row.split(",").map(Number));
+
+const LABEL = { 0: "0", 0.5: "½", 1: "", 2: "2" };
+const CLASS = { 0: "x0", 0.5: "x05", 1: "x1", 2: "x2" };
+
+const head = TYPES.map(([name, colour]) =>
+  `<th scope="col"><span class="t" style="background:${colour}">${name}</span></th>`).join("");
+
+const body = CHART.map((row, i) => {
+  const [name, colour] = TYPES[i];
+  const cells = row.map(v => `<td><span class="cell ${CLASS[v]}">${LABEL[v]}</span></td>`).join("");
+  return `<tr><th scope="row"><span class="t" style="background:${colour}">${name}</span></th>${cells}</tr>`;
+}).join("");
+
+document.getElementById("type-chart").innerHTML =
+  `<thead><tr><th scope="col"><span class="t" style="background:var(--panel-2);color:var(--ink-dim)">攻 ＼ 防</span></th>${head}</tr></thead>`
+  + `<tbody>${body}</tbody>`;
+</script>
+</body>
+</html>

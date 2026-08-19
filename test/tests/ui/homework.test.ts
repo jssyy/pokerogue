@@ -21,6 +21,7 @@ import { canAffordPlay, tryPayToPlay, tryPayWaveToll } from "#system/homework-ga
 import { homeworkManager } from "#system/homework-manager";
 import { GameManager } from "#test/framework/game-manager";
 import { HomeworkUiHandler } from "#ui/homework-ui-handler";
+import i18next from "i18next";
 import Phaser from "phaser";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -73,6 +74,19 @@ describe("UI - Homework planner", () => {
     menu.processInput(Button.ACTION);
   }
 
+  /**
+   * Picks an option by its label rather than its position.
+   *
+   * The planner's menu grows over time; selecting by index means every new entry renumbers a dozen
+   * unrelated tests.
+   */
+  function chooseLabel(label: string): void {
+    const menu = game.scene.ui.getHandler() as unknown as { config: { options: { label: string }[] } };
+    const index = menu.config.options.findIndex(o => o.label === label);
+    expect(index, `no option labelled "${label}"`).toBeGreaterThanOrEqual(0);
+    chooseOption(index);
+  }
+
   /** Opens the planner's own menu (the row after the day's tasks). */
   function openMainMenu(handler: HomeworkUiHandler, taskRows: number): void {
     handler.setCursor(taskRows);
@@ -83,7 +97,7 @@ describe("UI - Homework planner", () => {
   /** Unlocks parent mode through the PIN modal, the way a parent has to. */
   function enterParentMode(handler: HomeworkUiHandler, taskRows: number): void {
     openMainMenu(handler, taskRows);
-    chooseOption(3);
+    chooseLabel(i18next.t("homework:action.parentMode"));
     expect(game.scene.ui.getMode()).toBe(UiMode.HOMEWORK_PIN);
     const modal = game.scene.ui.getHandler() as unknown as { inputs: { text: string }[] };
     modal.inputs[0].text = DEFAULT_PARENT_PIN;
@@ -183,10 +197,7 @@ describe("UI - Homework planner", () => {
     handler.processInput(Button.ACTION);
     expect(game.scene.ui.getMode()).toBe(UiMode.OPTION_SELECT);
 
-    // Child menu: shop, ledger, help, parent mode, cancel - parent mode is the second to last.
-    const menu = game.scene.ui.getHandler();
-    menu.setCursor(3);
-    menu.processInput(Button.ACTION);
+    chooseLabel(i18next.t("homework:action.parentMode"));
 
     expect(game.scene.ui.getMode()).toBe(UiMode.HOMEWORK_PIN);
   });
@@ -198,9 +209,7 @@ describe("UI - Homework planner", () => {
     // Open the trailing menu and pick "parent mode".
     handler.processInput(Button.DOWN);
     handler.processInput(Button.ACTION);
-    const childMenu = game.scene.ui.getHandler();
-    childMenu.setCursor(3);
-    childMenu.processInput(Button.ACTION);
+    chooseLabel(i18next.t("homework:action.parentMode"));
     expect(game.scene.ui.getMode()).toBe(UiMode.HOMEWORK_PIN);
 
     // Type the starting PIN and submit.
@@ -338,7 +347,7 @@ describe("UI - Homework planner", () => {
       // 3. A parent unlocks grading with the PIN.
       planner.setCursor(2);
       planner.processInput(Button.ACTION);
-      chooseOption(3);
+      chooseLabel(i18next.t("homework:action.parentMode"));
       expect(game.scene.ui.getMode()).toBe(UiMode.HOMEWORK_PIN);
       const pinModal = game.scene.ui.getHandler() as unknown as { inputs: { text: string }[] };
       pinModal.inputs[0].text = DEFAULT_PARENT_PIN;
@@ -406,7 +415,7 @@ describe("UI - Homework planner", () => {
       const handler = await openPlanner();
 
       openMainMenu(handler, 0);
-      chooseOption(2); // how it works
+      chooseLabel(i18next.t("homework:action.help"));
 
       expectPlannerAlive(handler);
     });

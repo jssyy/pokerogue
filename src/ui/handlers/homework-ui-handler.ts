@@ -8,6 +8,7 @@ import {
   COST_NEW_RUN,
   COST_RESUME_RUN,
   COST_WAVE_TOLL,
+  GUIDE_URL,
   MAX_STARS,
   PARENT_PIN_LENGTH,
   STAMINA_BAR_REFERENCE,
@@ -667,6 +668,11 @@ export class HomeworkUiHandler extends MessageUiHandler {
       // Every option handler must either close the menus or open another overlay; one that does
       // neither leaves the cleared option select as the active mode, which freezes the planner.
       this.menuAction(i18next.t("homework:action.ledger"), () => this.showLedger()),
+      this.menuAction(i18next.t("homework:action.guide"), () => {
+        window.open(GUIDE_URL, "_blank")?.focus();
+        // Said out loud because a blocked pop-up otherwise looks like the option did nothing.
+        this.showText(i18next.t("homework:guide.opened"), 0);
+      }),
       this.menuAction(i18next.t("homework:action.help"), () => this.showText(i18next.t("homework:help.text"), 0)),
     );
 

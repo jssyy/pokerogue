@@ -18,6 +18,14 @@ export const sharedConfig: UserConfigFnPromise = async ({ mode }) => {
       chunkSizeWarningLimit: 10000,
       minify: "oxc",
       rolldownOptions: {
+        // The guide is a second page, so it has to be named here: `appType: "mpa"` changes how the
+        // dev server resolves requests, but the build still starts from whatever inputs it is given.
+        input: {
+          main: "index.html",
+          guide: "guide.html",
+          guideDex: "guide-dex.html",
+          guideItems: "guide-items.html",
+        },
         // TODO: Review if we even need this anymore in v8.0
         onwarn(warning, defaultHandler) {
           // Suppress "Module level directives cause errors when bundled" warnings

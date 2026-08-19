@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>作业勇者 · 道具图鉴</title>
+<style>
+  :root {
+    --ink:#eceaf2; --ink-dim:#a9a3bb; --ink-faint:#6f6883;
+    --bg:#1b1823; --panel:#2a2436; --panel-2:#332b42; --line:#453c58;
+    --accent:#e8542f; --accent-soft:#f0855f; --gold:#f2c14e;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.6 "Microsoft YaHei","PingFang SC","Noto Sans CJK SC",system-ui,sans-serif; }
+  a { color: var(--accent-soft); }
+  .wrap { max-width:1240px; margin:0 auto; padding:28px 20px 80px; }
+  header { border-bottom:1px solid var(--line); padding-bottom:18px; }
+  h1 { margin:0 0 4px; font-size:1.7rem; color:var(--gold); }
+  header p { margin:0 0 4px; color:var(--ink-dim); font-size:.94rem; }
+  .controls { position:sticky; top:0; z-index:5; background:var(--bg);
+    padding:14px 0 12px; border-bottom:1px solid var(--line);
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  input[type=search] { flex:1 1 240px; min-width:200px; background:var(--panel); color:var(--ink);
+    border:1px solid var(--line); border-radius:8px; padding:8px 12px; font:inherit; }
+  input[type=search]::placeholder { color: var(--ink-faint); }
+  select, button { background:var(--panel); color:var(--ink); border:1px solid var(--line);
+    border-radius:8px; padding:8px 12px; font:inherit; cursor:pointer; }
+  .count { color:var(--ink-faint); font-size:.88rem; margin-left:auto; }
+  table { border-collapse:collapse; width:100%; margin-top:8px; font-size:.9rem; }
+  th, td { padding:6px 8px; text-align:left; white-space:nowrap; }
+  thead th { position:sticky; top:63px; background:var(--panel-2); z-index:4;
+    border-bottom:1px solid var(--line); user-select:none; }
+  tbody tr { border-bottom:1px solid #ffffff0d; }
+  tbody tr:hover { background:#ffffff08; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  footer { margin-top:40px; color:var(--ink-faint); font-size:.85rem;
+    border-top:1px solid var(--line); padding-top:16px; }
+  footer p { margin:6px 0; }
+
+  td.ic { width:52px; text-align:center; }
+  td.ic img { width:32px; height:32px; image-rendering:pixelated; vertical-align:middle; }
+  td.nm { font-weight:600; white-space:nowrap; }
+  td.ds { white-space:normal; color:var(--ink-dim); font-size:.88rem; line-height:1.55; }
+  td.gp { color:var(--ink-faint); font-size:.84rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>道具图鉴 · 每样东西做什么</h1>
+  <p>每场战斗胜利后的三选一就是从这些里面挑。<a href="./guide.html">← 游戏指南</a> · <a href="./guide-dex.html">宝可梦图鉴 →</a></p>
+  <p><b>选道具的原则：</b>前期优先拿<b>能叠加的强化</b>（同一个拿多个会累加），血线吃紧了再拿回复。这是能不能滚起雪球的分水岭。</p>
+</header>
+
+<div class="controls">
+  <input type="search" id="q" placeholder="搜道具名或效果…" autocomplete="off" />
+  <button id="reset">重置</button>
+  <span class="count" id="count"></span>
+</div>
+
+<table>
+  <thead><tr><th></th><th>名字</th><th>作用</th><th>分类</th></tr></thead>
+  <tbody id="rows"></tbody>
+</table>
+
+<footer>
+  <p>共 92 种。名称与说明取自游戏本体的中文文案，图标就是游戏里用的那张图。</p>
+</footer>
+</div>
+
+<script>
+// [name, description, iconFile, group]
+const ITEMS = [["5× 精灵球","获得 精灵球x 5 \n捕捉倍率：1x。","pb","精灵球"],["5× 超级球","获得 超级球x 5 \n捕捉倍率：1.5x。","gb","精灵球"],["5× 高级球","获得 高级球x 5 \n捕捉倍率：2x。","ub","精灵球"],["5× 肉鸽球","获得 肉鸽球x 5 \n捕捉倍率：3x。","rb","精灵球"],["1× 大师球","获得 大师球x 1 \n捕捉倍率：100%。","mb","精灵球"],["神奇糖果","使一只宝可梦的等级提升1级。","rare_candy",""],["超神奇糖果","使所有宝可梦的等级提升1级。","rarer_candy",""],["宝藏金币","这个宝可梦最爱金币！多收集点金币的话会发生什么呢？","relic_gold",""],["超級手鐲","能讓攜帶着超級石戰鬥的寶可夢進行\n超級進化。","mega_bracelet",""],["极巨腕带","能让携带着极巨菇菇战斗的宝可梦\n进行超极巨化。","dynamax_band",""],["太晶珠","能让战斗的宝可梦进行太晶化。\n缓慢充能，太晶碎片也会出现在商店中。","tera_orb",""],["地图","有概率允许你在切换地区时\n选择目的地。","map",""],["伤药","为一只宝可梦回复20ＨＰ或10%ＨＰ，取较大值。","potion","回复与复活"],["好伤药","为一只宝可梦回复50ＨＰ或25%ＨＰ，取较大值。","super_potion","回复与复活"],["厉害伤药","为一只宝可梦回复200ＨＰ或50%ＨＰ，取较大值。","hyper_potion","回复与复活"],["全满药","为一只宝可梦回复全部ＨＰ。","max_potion","回复与复活"],["全复药","为一只宝可梦回复全部ＨＰ并消除所有负面\n状态。","full_restore","回复与复活"],["活力碎片","复活一只宝可梦并回复 50% ＨＰ。","revive","回复与复活"],["活力块","复活一只宝可梦并回复 100% ＨＰ。","max_revive","回复与复活"],["万灵药","为一只宝可梦消除所有负面状态。","full_heal",""],["圣灰","复活所有濒死的宝可梦，\n并完全回复ＨＰ。","sacred_ash","回复与复活"],["复活种子","受到技能攻击伤害濒死时，\n恢复该宝可梦的ＨＰ至１/２。","reviver_seed",""],["白色香草","当携带它的宝可梦能力降低时，\n仅能回到之前的状态１次。","white_herb",""],["ＰＰ单项小补剂","为一只宝可梦的一个招式回复 10 ＰＰ。","ether",""],["ＰＰ单项全补剂","完全回复一只宝可梦一个招式的ＰＰ。","max_ether",""],["ＰＰ多项小补剂","为一只宝可梦的所有招式回复 10 ＰＰ。","elixir",""],["ＰＰ多项全补剂","为一只宝可梦的所有招式回复所有ＰＰ。","max_elixir",""],["ＰＰ提升剂","选择一只宝可梦的一个招式使用\n使其ＰＰ最大值提升基础的２０％ (最多３次)。","pp_up",""],["ＰＰ极限提升剂","选择一只宝可梦的一个招式使用\n使其ＰＰ最大值提升基础的２０％ (最多３次)。","pp_max",""],["引虫香水","遭遇双打概率提升四倍，持续10场战斗。","lure",""],["白银香水","遭遇双打概率提升四倍，持续15场战斗。","super_lure",""],["黄金香水","遭遇双打概率提升四倍，持续30场战斗。","max_lure",""],["要害攻击","提升全队的会心１阶，持续５场战斗。","dire_hit",""],["神秘石块","每堆叠一次，可将招式或能力造成的\n地形和天气的持续时间延长 ２ 回合。","mystical_rock",""],["回忆蘑菇","回忆一个宝可梦已经遗忘的招式。","big_mushroom",""],["学习装置","未参加对战的宝可梦获得２０%的经验值。","exp_share",""],["均衡型学习装置","经验值会更多分给队伍中等级最低的宝可梦。","exp_balance",""],["圆形护符","当多只宝可梦参与战斗，分别获得总经验值\n１０%的额外经验值。","oval_charm",""],["经验护符","经验值获取量增加25%。","exp_charm",""],["超级经验护符","经验值获取量增加60%。","super_exp_charm",""],["黄金经验护符","经验值获取量增加100%。","golden_exp_charm",""],["幸运蛋","持有者经验值获取量增加40%。","lucky_egg",""],["金蛋","持有者经验值获取量增加100%。","golden_egg",""],["安抚之铃","亲密度获取量增加５０%。","soothe_bell",""],["焦点镜","能看见弱点的镜片。携带它的宝可梦的招式\n会变得容易击中要害。","scope_lens",""],["大葱","非常长且坚硬的茎。让大葱鸭携带后，\n招式会变得容易击中要害。","leek",""],["进化奇石","携带后，还能进化的宝可梦的\n防御和特防就会提高。","eviolite",""],["心之水滴","增加１０%宝可梦性格对数值的影响 (加算)。","soul_dew",""],["金珠","","nugget",""],["巨大金珠","","big_nugget",""],["古代金币","","relic_gold",""],["护符金币","获得的金钱增加２０%。","amulet_coin",""],["黄金拳头","将５０%造成的伤害转换为金钱。","golden_punch",""],["代币盒","每１０场战斗, 获得自己金钱１０%的利息。","coin_case",""],["上锁的容器","允许在商店中刷新物品时，\n锁定物品的稀有度。","lock_capsule",""],["紧缠钩爪","攻击时10%概率\n偷取对手物品。","grip_claw",""],["广角镜","招式命中率增加5。","wide_lens",""],["多重镜","将持有者本次伤害的２５%转化为一次独立的攻击。","zoom_lens",""],["治愈护符","ＨＰ回复量增加１０% (不含复活)。","healing_charm",""],["糖果罐","神奇糖果提供的升级额外增加１级。","candy_jar",""],["树果袋","使用树果时增加３０%的几率不会消耗树果。","berry_pouch",""],["气势头带","携带该道具的宝可梦增加１０%几率在受到攻击\n而将陷入濒死状态时，保留１点ＨＰ不陷入濒死状态。","focus_band",""],["先制之爪","增加１０%的几率无视速度优先使出招式\n(先制技能优先)。","quick_claw",""],["王者之证","使用任意原本不会造成畏缩状态的攻击，\n增加１０%几率使目标陷入畏缩状态。","kings_rock",""],["吃剩的东西","携带后，在每个回合结束时恢复\n最大ＨＰ的１/１６。","leftovers",""],["贝壳之铃","携带后，在攻击对方成功造成伤害时，\n携带者的ＨＰ会恢复其所造成伤害的１/８。","shell_bell",""],["剧毒宝珠","触碰后会放出毒的神奇宝珠。\n携带后，在战斗时会变成剧毒状态。","toxic_orb",""],["火焰宝珠","触碰后会放出热量的神奇宝珠。\n携带后，在战斗时会变成灼伤状态。","flame_orb",""],["接力棒","允许在切换宝可梦时保留能力变化, 对陷阱\n同样生效。","baton",""],["闪耀护符","显著增加野生宝可梦的闪光概率。","shiny_charm",""],["特性护符","显著增加野生宝可梦有隐藏特性的概率。","ability_charm",""],["防晃护符","增加关键捕获的几率。","catching_charm",""],["个体值探测器","允许扫描野生宝可梦的个体值。","scanner",""],["基因之楔","融合两只宝可梦（改变特性, 平分基础点数\n和属性, 共享招式池）。","dna_splicers",""],["迷你黑洞","持有者每回合从对手那里\n获得一个持有的物品。","mini_black_hole",""],["1x 初级扭蛋券","获得 初级扭蛋券 ×1。","coupon",""],["1x 中级扭蛋券","获得 中级扭蛋券 ×1。","pair_of_tickets",""],["1x 高级扭蛋券","获得 高级扭蛋券 ×1。","mystic_ticket",""],["黄金精灵球","在每场战斗结束后，增加一个额外物品选项。","pb_gold",""],["ModifierType.SILVER_POKEBALL.name","ModifierType.SILVER_POKEBALL.description","pb_silver",""],["伤害硬币","造成５%额外伤害（乘算）。","wl_item_drop",""],["防御硬币","受到２.５%更少伤害（乘算）。","wl_guard_spec",""],["回复硬币","每回合回复２%最大ＨＰ。","wl_potion",""],["剧毒硬币","攻击时5%概率造成中毒。","wl_antidote",""],["麻痹硬币","攻击时2.5%概率造成麻痹。","wl_paralyze_heal",""],["灼烧硬币","攻击时5%概率造成灼伤。","wl_burn_heal",""],["万灵药硬币","增加２.５%每回合治愈异常状态的概率。","wl_full_heal",""],["忍受硬币","敌方增加2%的概率\n在本回合不会倒下。","wl_reset_urge",""],["融合硬币","增加１%野生融合宝可梦出现概率。","wl_custom_spliced",""],["森之羊羔","增加持有者的部分个体值。","old_gateau",""],["强制锻炼器","击败对手后获得一层锻炼等级。每层会略微提升属性，\n达到最大层数时还会获得额外奖励。","macho_brace",""],["金捕虫网","赋予主人好运，使其更容易\n找到虫属性宝可梦，手感很奇妙。","golden_net",""]];
+
+function render() {
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const out = [];
+  ITEMS.forEach(it => {
+    if (q && (it[0] + it[1]).toLowerCase().indexOf(q) === -1) return;
+    const img = it[2] ? '<img src="./images/items/' + it[2] + '.png" alt="" loading="lazy" />' : "";
+    out.push("<tr><td class=\"ic\">" + img + '</td><td class="nm">' + it[0]
+      + '</td><td class="ds">' + (it[1] || "—") + '</td><td class="gp">' + (it[3] || "") + "</td></tr>");
+  });
+  document.getElementById("rows").innerHTML = out.join("");
+  document.getElementById("count").textContent = "显示 " + out.length + " 种";
+}
+document.getElementById("q").addEventListener("input", render);
+document.getElementById("reset").addEventListener("click", () => {
+  document.getElementById("q").value = "";
+  render();
+});
+render();
+</script>
+</body>
+</html>

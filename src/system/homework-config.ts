@@ -2,6 +2,14 @@ import { HomeworkSubject } from "#enums/homework-subject";
 import type { StarRating } from "#types/homework-types";
 
 /** Current version of the homework save payload. */
+/**
+ * The bundled guide, opened as its own page from the in-game menu and from the planner.
+ *
+ * Relative, so it resolves under whatever path the game is served from, and shipped with the build
+ * rather than linked off-site, so it still opens with no network.
+ */
+export const GUIDE_URL = "./guide.html";
+
 export const HOMEWORK_SAVE_VERSION = 1;
 
 /** Highest star rating a parent can award. */

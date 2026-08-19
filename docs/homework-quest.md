@@ -113,3 +113,70 @@ SPDX-License-Identifier: CC-BY-NC-SA-4.0
 测试：`test/tests/system/homework-data.test.ts`（经济规则）、`test/tests/system/homework-date.test.ts`（日期）、`test/tests/ui/homework.test.ts`（真实场景下开界面、孩子提交、家长 PIN 打分、门禁与波次收费）。
 
 > 注意：测试框架默认关闭体力门禁（`test/framework/game-manager.ts`），否则任何跑过 10 波的既有测试都会被收费卡住。
+
+## 游戏指南（离线网页）
+
+三张独立网页，随游戏一起构建、一起部署，不联网：
+
+| 文件 | 内容 |
+| --- | --- |
+| `guide.html` | 上手手册。体力规则、一局流程、战斗、属性相克全表、能力值、特性、成长路径、道具、捕获、蛋与糖果、存档规则、家长指南、常见问题 |
+| `guide-dex.html` | 1084 只宝可梦，按 571 条进化家族排成「初始 → 中级 → 终极」，带图标、属性、特性、六项能力值与开局花费；可搜索、筛选、按列排序 |
+| `guide-items.html` | 92 种道具的图标、名称与作用 |
+
+入口有两处，都调用 `window.open(GUIDE_URL)`（`src/system/homework-config.ts`）：计划表的「菜单… → 游戏指南」，以及游戏内菜单的「游戏指南」。三张页面都在 `vite.config.ts` 的 `rolldownOptions.input` 里注册，否则构建只会打包 `index.html`。
+
+图片不复制一份：宝可梦用 `./images/pokemon_icons_N.png` 图集按坐标切片，道具直接引 `./images/items/*.png`，都是游戏本来就在提供的路径。
+
+### 重新生成图鉴页
+
+数据不是从源码解析的，而是**从跑起来的游戏里读**——这样名字、数值和道具文案就与玩家看到的完全一致，语言也跟着游戏走。跑开发服务器，在游戏加载完成后的控制台执行：
+
+```js
+// 1) 物种与进化链
+const { speciesDataRegistry: reg } = await import("/src/globals/global-species-data-registry.ts");
+const { SpeciesId } = await import("/src/enums/species-id.ts");
+const { allAbilities, modifierTypes } = await import("/src/data/data-lists.ts");
+const abName = a => allAbilities[a]?.name ?? "";
+const seen = new Map();
+for (const id of Object.values(SpeciesId).filter(v => typeof v === "number")) {
+  let s; try { s = reg.getSpecies(id); } catch { continue; }
+  if (!s) continue;
+  const d = reg.getSpeciesData(id);
+  seen.set(id, { id, n: s.getName(), t: [s.type1, s.type2].filter(t => t != null),
+    a: [...new Set([s.ability1, s.ability2].filter(Boolean))].map(abName),
+    h: s.abilityHidden ? abName(s.abilityHidden) : "", p: d.passives ? abName(d.passives) : "",
+    s: s.baseStats.slice(), c: d.starterCost ?? null, pre: d.prevolution ?? null,
+    evo: (d.evolutions ?? []).map(e => ({ to: e.speciesId })) });
+}
+const families = [];
+for (const [id, e] of seen) {
+  if (e.pre != null) continue;
+  const chain = [];
+  (function walk(nid, depth) {
+    const node = seen.get(nid); if (!node || depth > 4) return;
+    chain.push({ ...node, depth });
+    for (const nx of node.evo) walk(nx.to, depth + 1);
+  })(id, 0);
+  if (chain.length) families.push(chain);
+}
+
+// 2) 图标坐标与道具
+const icons = {};
+for (const id of seen.keys()) { const s = reg.getSpecies(id); icons[id] = [s.getIconAtlasKey(), s.getIconId(false)]; }
+const items = Object.keys(modifierTypes).map(k => {
+  try { const t = modifierTypes[k](); return t && { k, name: t.name ?? "", desc: t.description ?? "", icon: t.iconImage ?? "", group: t.group ?? "" }; }
+  catch { return null; }
+}).filter(Boolean);
+
+copy(JSON.stringify({ families }));            // 存成 dex.json
+copy(JSON.stringify({ icons, items }));        // 存成 extra.json
+```
+
+把两个文件放同一个目录，然后：
+
+```bash
+python scripts/build-guide-pages.py <那个目录>
+```
+
+会就地覆盖 `guide-dex.html` 和 `guide-items.html`。`guide.html` 是手写的，不由脚本生成。

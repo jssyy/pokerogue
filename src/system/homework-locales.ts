@@ -9,6 +9,7 @@ export const HOMEWORK_NS = "homework";
  */
 const zhHans = {
   name: "作业勇者",
+  guide: { menu: "游戏指南", opened: "指南已在新标签页打开。" },
   today: "今天",
   yesterday: "昨天",
   tomorrow: "明天",
@@ -87,6 +88,7 @@ const zhHans = {
     markDone: "我做完了",
     withdraw: "撤销「做完了」",
     shop: "学习商店",
+    guide: "游戏指南",
     ledger: "我的账本",
     parentMode: "家长模式",
     exitParentMode: "退出家长模式",
@@ -211,6 +213,7 @@ const zhHans = {
 
 const en: typeof zhHans = {
   name: "Homework Quest",
+  guide: { menu: "Game guide", opened: "The guide opened in a new tab." },
   today: "Today",
   yesterday: "Yesterday",
   tomorrow: "Tomorrow",
@@ -289,6 +292,7 @@ const en: typeof zhHans = {
     markDone: "I finished it",
     withdraw: 'Undo "finished"',
     shop: "Study shop",
+    guide: "Game guide",
     ledger: "My ledger",
     parentMode: "Parent mode",
     exitParentMode: "Leave parent mode",

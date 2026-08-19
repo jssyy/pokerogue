@@ -9,6 +9,7 @@ import { Button } from "#enums/buttons";
 import { GameDataType } from "#enums/game-data-type";
 import { TextStyle } from "#enums/text-style";
 import { UiMode } from "#enums/ui-mode";
+import { GUIDE_URL } from "#system/homework-config";
 import type { OptionSelectConfig, OptionSelectItem } from "#types/ui-types";
 import type { AwaitableUiHandler } from "#ui/awaitable-ui-handler";
 import { BgmBar } from "#ui/bgm-bar";
@@ -29,6 +30,7 @@ enum MenuOptions {
   EGG_GACHA,
   POKEDEX,
   HOMEWORK,
+  GUIDE,
   MANAGE_DATA,
   COMMUNITY,
   SAVE_AND_QUIT,
@@ -143,10 +145,12 @@ export class MenuUiHandler extends MessageUiHandler {
       0,
       this.menuOptions
         .map(o =>
-          // The homework planner ships its own strings rather than living in the locale submodule.
+          // These two ship their own strings rather than living in the locale submodule.
           o === MenuOptions.HOMEWORK
             ? i18next.t("homework:name")
-            : `${i18next.t(`menuUiHandler:${toCamelCase(MenuOptions[o])}`)}`,
+            : o === MenuOptions.GUIDE
+              ? i18next.t("homework:guide.menu")
+              : `${i18next.t(`menuUiHandler:${toCamelCase(MenuOptions[o])}`)}`,
         )
         .join("\n"),
       TextStyle.WINDOW,
@@ -616,6 +620,10 @@ export class MenuUiHandler extends MessageUiHandler {
           break;
         case MenuOptions.HOMEWORK:
           ui.setOverlayMode(UiMode.HOMEWORK);
+          success = true;
+          break;
+        case MenuOptions.GUIDE:
+          window.open(GUIDE_URL, "_blank")?.focus();
           success = true;
           break;
         case MenuOptions.MANAGE_DATA:
