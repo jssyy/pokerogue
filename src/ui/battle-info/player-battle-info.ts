@@ -247,16 +247,8 @@ export class PlayerBattleInfo extends BattleInfo {
       return;
     }
     this.hpNumbersContainer.removeAll(true);
-    const hpStr = hp.toString();
-    const maxHpStr = maxHp.toString();
-    let offset = 0;
-    for (let i = maxHpStr.length - 1; i >= 0; i--) {
-      this.hpNumbersContainer.add(globalScene.add.image(offset++ * -8, 0, "numbers", maxHpStr[i]));
-    }
-    this.hpNumbersContainer.add(globalScene.add.image(offset++ * -8, 0, "numbers", "/"));
-    for (let i = hpStr.length - 1; i >= 0; i--) {
-      this.hpNumbersContainer.add(globalScene.add.image(offset++ * -8, 0, "numbers", hpStr[i]));
-    }
+    // Anchored at its right end, under the end of the health bar, and grows leftwards as HP totals do.
+    this.hpNumbersContainer.add(this.makeReadout(`${hp}/${maxHp}`, 1));
   }
 
   /**

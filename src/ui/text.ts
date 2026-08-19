@@ -11,6 +11,19 @@ import type Phaser from "phaser";
 import BBCodeText from "phaser3-rex-plugins/plugins/gameobjects/tagtext/bbcodetext/BBCodeText";
 import type InputText from "phaser3-rex-plugins/plugins/inputtext";
 
+/**
+ * The machine's own UI face, for the few places that need real outlines rather than the pixel font.
+ *
+ * The bundled `emerald` face draws everything on a 16x16 grid, which is finer than the art around it
+ * at small sizes but coarser at large ones - a digit sized to match the 8x8 `numbers` sprites lands
+ * at about 7 screen pixels per design pixel against the sprite's 6. Anything that wants to be sharper
+ * than the art, rather than merely as blocky, has to come from an outline font.
+ *
+ * Keep the pixel font last so a machine with none of these still renders.
+ */
+export const SYSTEM_UI_FONT =
+  "'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'Source Han Sans SC', 'Heiti SC', SimHei, sans-serif, emerald";
+
 export function addTextObject(
   x: number,
   y: number,
