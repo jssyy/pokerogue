@@ -7,6 +7,7 @@ import { InvertPostFX } from "#app/pipelines/invert";
 import { preventDoubleTapZoom } from "#app/touch-controls";
 import { isBeta, isDev } from "#constants/app-constants";
 import { version } from "#package.json";
+import { installBugLog } from "#system/bug-log";
 import Phaser from "phaser";
 import BBCodeTextPlugin from "phaser3-rex-plugins/plugins/bbcodetext-plugin";
 import InputTextPlugin from "phaser3-rex-plugins/plugins/inputtext-plugin";
@@ -22,6 +23,9 @@ preventDoubleTapZoom();
 async function startGame(): Promise<void> {
   const LoadingScene = (await import("./loading-scene")).LoadingScene;
   const BattleScene = (await import("./battle-scene")).BattleScene;
+  // Before anything else, so a failure during boot still leaves a trail.
+  installBugLog();
+
   const game = new Phaser.Game({
     type: Phaser.WEBGL,
     parent: "app",

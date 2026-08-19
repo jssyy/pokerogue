@@ -38,6 +38,9 @@ enum MenuOptions {
 }
 
 let wikiUrl = "https://wiki.pokerogue.net/start";
+/** Gap between the menu window's edge and the first row of text. */
+const MENU_PADDING = 6;
+
 const discordUrl = "https://discord.gg/pokerogue";
 const githubUrl = "https://github.com/pagefaultgames/pokerogue";
 const redditUrl = "https://www.reddit.com/r/pokerogue";
@@ -56,6 +59,8 @@ export class MenuUiHandler extends MessageUiHandler {
   protected optionSelectText: Phaser.GameObjects.Text;
 
   private cursorObj: Phaser.GameObjects.Image | null;
+  /** Distance from one menu row to the next, in canvas units. Measured, not assumed - see `setup`. */
+  private rowHeight: number;
 
   private excludedMenus: () => ConditionalMenu[];
   private menuOptions: MenuOptions[];
@@ -159,6 +164,22 @@ export class MenuUiHandler extends MessageUiHandler {
     this.optionSelectText.setLineSpacing(12);
 
     this.scale = getTextStyleOptions(TextStyle.WINDOW).scale;
+
+    // The window is as tall as the screen, so a long enough list simply runs off the bottom - which
+    // is what happened once the menu passed ten entries. Shrink the block to fit rather than letting
+    // the last option fall off the edge.
+    // The window itself is two short of the stage, and the text is inset by the padding twice over.
+    const room = globalScene.scaledCanvas.height - 2 - MENU_PADDING * 2;
+    if (this.optionSelectText.displayHeight > room) {
+      this.scale *= room / this.optionSelectText.displayHeight;
+      this.optionSelectText.setScale(this.scale);
+    }
+    // Phaser takes a line's height from the font's own metrics, so the 96 point size the style asks
+    // for is not the distance between two rows. Measuring it is what keeps the cursor on its row:
+    // stepping by the point size instead drifts a couple of pixels per row, which by the bottom of a
+    // list this long is most of a row.
+    this.rowHeight = this.optionSelectText.displayHeight / this.menuOptions.length;
+
     this.menuBg = addWindow(
       globalScene.scaledCanvas.width - (this.optionSelectText.displayWidth + 25),
       0,
@@ -167,7 +188,7 @@ export class MenuUiHandler extends MessageUiHandler {
     );
     this.menuBg.setOrigin(0, 0);
 
-    this.optionSelectText.setPositionRelative(this.menuBg, 10 + 24 * this.scale, 6);
+    this.optionSelectText.setPositionRelative(this.menuBg, 10 + 24 * this.scale, MENU_PADDING);
 
     this.menuContainer.add(this.menuBg);
 
@@ -829,7 +850,13 @@ export class MenuUiHandler extends MessageUiHandler {
     }
 
     this.cursorObj.setScale(this.scale * 6);
-    this.cursorObj.setPositionRelative(this.menuBg, 7, 6 + (18 + this.cursor * 96) * this.scale);
+    // Centred on its row, so it tracks the text at whatever scale the list ended up at.
+    const cursorHeight = this.cursorObj.displayHeight;
+    this.cursorObj.setPositionRelative(
+      this.menuBg,
+      7,
+      MENU_PADDING + this.cursor * this.rowHeight + (this.rowHeight - cursorHeight) / 2,
+    );
 
     return ret;
   }

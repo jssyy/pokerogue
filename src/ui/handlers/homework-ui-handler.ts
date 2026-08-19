@@ -4,6 +4,7 @@ import type { HomeworkSubject } from "#enums/homework-subject";
 import { HomeworkTaskStatus } from "#enums/homework-task-status";
 import { TextStyle } from "#enums/text-style";
 import { UiMode } from "#enums/ui-mode";
+import { bugLogSize, downloadBugLog } from "#system/bug-log";
 import {
   COST_NEW_RUN,
   COST_RESUME_RUN,
@@ -965,6 +966,10 @@ export class HomeworkUiHandler extends MessageUiHandler {
   private openParentSettings(): void {
     const data = homeworkManager.get();
     const options: OptionSelectItem[] = [
+      this.menuAction(i18next.t("homework:parent.exportLog"), () => {
+        downloadBugLog();
+        this.showText(i18next.t("homework:parent.logExported", { count: bugLogSize() }), 0);
+      }),
       this.menuAction(i18next.t("homework:parent.toggleGate"), () => {
         homeworkManager.mutate(d => {
           d.gateEnabled = !d.gateEnabled;
