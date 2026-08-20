@@ -188,15 +188,21 @@ python scripts/build-guide-pages.py <那个目录>
 
 `pnpm start:dev` **不会**出现登录界面：`.env.development` 里 `VITE_BYPASS_LOGIN=1`，那是上游给纯本地开发用的模式，账号、云存档、家长身份全都不参与。带账号玩要用 `family` 模式。
 
-两个终端：
+两个终端，**都在仓库根目录 `G:\pokerogue` 下**：
 
 ```bash
-# ① 账号服务（默认 8001，数据在 server/data/）
-cd server && npm start
+pnpm start:server
+```
 
-# ② 游戏（默认 8000，登录不跳过，指向 localhost:8001）
+```bash
 pnpm start:family
 ```
+
+第一条是账号服务（8001，数据在 `server/data/`），第二条是游戏（8000，不跳过登录，指向 `localhost:8001`）。
+
+> `start:family` 在根目录的 `package.json` 里，**在 `server/` 目录下跑会报 `Command "start:family" not found`**。服务端也可以照旧 `cd server && npm start`，两种起法用的是同一份数据。
+>
+> 报 `EADDRINUSE :::8001` 就是已经有一个服务在跑了，别再起第二个。
 
 **在游戏里注册的第一个账号会成为家长账号**，之后的孩子账号由家长在游戏内创建，没有自助注册。
 

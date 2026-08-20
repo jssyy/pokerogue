@@ -11,7 +11,15 @@ import type { Ctx } from "./http.ts";
 import { applyCors, readBody, Router, text } from "./http.ts";
 
 const PORT = Number(process.env.PORT ?? 8001);
-const DATA_DIR = process.env.DATA_DIR ?? "./data";
+/**
+ * Where the database lives.
+ *
+ * Resolved against this file rather than the working directory, so `npm start` from `server/` and
+ * `pnpm start:server` from the repository root both reach the same data. Keying it to the cwd meant
+ * the second one quietly created an empty second database.
+ */
+const SERVER_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const DATA_DIR = process.env.DATA_DIR ?? join(SERVER_ROOT, "data");
 const DB_FILE = join(DATA_DIR, "family.sqlite");
 const BACKUP_DIR = join(DATA_DIR, "backups");
 
@@ -65,7 +73,7 @@ const router = new Router()
   // than a pixel-art dialog in the game would.
   .get("/", ctx => {
     try {
-      const page = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "public", "admin.html"));
+      const page = readFileSync(join(SERVER_ROOT, "public", "admin.html"));
       ctx.res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       ctx.res.end(page);
     } catch {
