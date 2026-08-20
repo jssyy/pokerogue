@@ -184,6 +184,32 @@ python scripts/build-guide-pages.py <那个目录>
 
 > `passives` 和 `eggTier` 都只登记在进化链的**第一阶段**上，后面的阶段读出来是空的。生成脚本会把它们沿家族往下继承——这两项描述的本来就是整条线：被动是用糖果为该种族解锁的，稀有度是扭蛋池的档位，而蛋孵出来一定是第一阶段。
 
+## 怎么带账号启动
+
+`pnpm start:dev` **不会**出现登录界面：`.env.development` 里 `VITE_BYPASS_LOGIN=1`，那是上游给纯本地开发用的模式，账号、云存档、家长身份全都不参与。带账号玩要用 `family` 模式。
+
+两个终端：
+
+```bash
+# ① 账号服务（默认 8001，数据在 server/data/）
+cd server && npm start
+
+# ② 游戏（默认 8000，登录不跳过，指向 localhost:8001）
+pnpm start:family
+```
+
+**在游戏里注册的第一个账号会成为家长账号**，之后的孩子账号由家长在游戏内创建，没有自助注册。
+
+| 模式 | 命令 | 登录 | 服务端 |
+| --- | --- | --- | --- |
+| 家庭（要用的） | `pnpm start:family` | 需要 | `localhost:8001` |
+| 上游本地开发 | `pnpm start:dev` | **跳过** | 不连 |
+| 上游线上 | `pnpm start:prod` | 需要 | `api.pokerogue.net` |
+
+构建同理：`pnpm build:family`。`.env.family` 是我们加的，上游的四个 env 文件一个都没动。
+
+> 端口被占用时 Vite 会自己往后找（8000 被占就用 8002 之类），启动日志里会写实际地址——看那一行，不要想当然。
+
 ## 跟上游保持同步
 
 上游（`pagefaultgames/pokerogue`）的玩法一直在更新，这个分支要定期把它拉进来。
