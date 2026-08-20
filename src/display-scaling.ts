@@ -11,6 +11,23 @@ const ART_HEIGHT = 180;
  */
 const MIN_SNAP_SCALE = 2;
 
+/**
+ * How much of the fitted size snapping is allowed to give up.
+ *
+ * Only whole multiples of six divide the canvas evenly, so the usable scales are 1, 2, 3 and 6 -
+ * a gap that costs nothing at 6.5 (which rounds to 6) but a third of the picture at 4.75, where the
+ * next clean scale down is 3.
+ *
+ * Losing that much is not just ugly. Phaser sizes the canvas by fitting its parent, and everything
+ * derived from that size - including the DOM input boxes the sign-in and PIN forms are built from -
+ * is positioned against the fitted figure, not the one written onto the canvas here. Shrink the
+ * canvas far enough underneath it and those boxes end up somewhere the player is not clicking.
+ * The figure is set just under the common desktop case: 1920 at 125% leaves 7.5 device pixels per
+ * art pixel, which snaps to 6 for a ratio of 0.8 - the arrangement that makes the art exactly sharp.
+ * A small window at 4.75 falls to 3, a ratio of 0.63, and is left to the browser instead.
+ */
+const MIN_SNAP_EFFICIENCY = 0.75;
+
 /** Canvas pixels the game draws per art pixel: the 1920x1080 canvas over the 320x180 grid. */
 const CANVAS_SCALE = 6;
 
@@ -43,6 +60,18 @@ function largestCleanScale(limit: number): number {
   return 1;
 }
 
+/**
+ * Whether snapping is paused.
+ *
+ * The forms - signing in, the parent PIN, naming a task - are DOM inputs laid over the canvas, and
+ * the plugin that places them sizes them from what Phaser thinks the canvas is, not from the size
+ * written onto it here. Shrinking the canvas underneath leaves those boxes wider than the ones drawn
+ * for them, so the caret sits away from the text and a click near the edge misses. While one is open
+ * the canvas is handed back to Phaser, which costs a little sharpness for as long as the form is up
+ * and nothing at all the rest of the time.
+ */
+let suspended = false;
+
 function snapToPixelGrid(game: Phaser.Game): void {
   const canvas = game.canvas;
   const parent = canvas?.parentElement;
@@ -54,9 +83,16 @@ function snapToPixelGrid(game: Phaser.Game): void {
   const pixelRatio = window.devicePixelRatio || 1;
   const widthScale = (available.width * pixelRatio) / ART_WIDTH;
   const heightScale = (available.height * pixelRatio) / ART_HEIGHT;
-  const scale = largestCleanScale(Math.floor(Math.min(widthScale, heightScale)));
+  const fitScale = Math.min(widthScale, heightScale);
+  const scale = largestCleanScale(Math.floor(fitScale));
 
-  if (scale < MIN_SNAP_SCALE) {
+  if (suspended || scale < MIN_SNAP_SCALE || scale / fitScale < MIN_SNAP_EFFICIENCY) {
+    // Hand the canvas back to Phaser's own fitting, undoing any size set on a previous pass.
+    if (canvas.style.width || canvas.style.height) {
+      canvas.style.width = "";
+      canvas.style.height = "";
+      game.scale.refresh();
+    }
     return;
   }
 
@@ -86,7 +122,26 @@ const RECHECK_INTERVAL = 1000;
  * fractional fit. A cheap periodic re-check covers that; it only touches the DOM when the size is
  * actually wrong.
  */
+let activeGame: Phaser.Game | null = null;
+
+/** Hands the canvas back to Phaser while a form with DOM inputs is on screen. */
+export function suspendPixelSnap(): void {
+  suspended = true;
+  if (activeGame) {
+    snapToPixelGrid(activeGame);
+  }
+}
+
+/** Resumes snapping once the form is gone. */
+export function resumePixelSnap(): void {
+  suspended = false;
+  if (activeGame) {
+    snapToPixelGrid(activeGame);
+  }
+}
+
 export function initPixelPerfectScaling(game: Phaser.Game): void {
+  activeGame = game;
   const apply = () => requestAnimationFrame(() => snapToPixelGrid(game));
 
   game.scale.on(Phaser.Scale.Events.RESIZE, apply);

@@ -1,3 +1,4 @@
+import { resumePixelSnap, suspendPixelSnap } from "#app/display-scaling";
 import { globalScene } from "#app/global-scene";
 import { Button } from "#enums/buttons";
 import { TextStyle } from "#enums/text-style";
@@ -8,6 +9,12 @@ import { addWindow, WindowVariant } from "#ui/ui-theme";
 import { fixedInt, truncateString } from "#utils/common";
 import type Phaser from "phaser";
 import type InputText from "phaser3-rex-plugins/plugins/inputtext";
+
+/** Left edge a form label falls back to when it is too wide to sit against the field column. */
+const LABEL_LEFT = 10;
+
+/** Gap between a right-aligned label and the input box it names. */
+const LABEL_GAP = 6;
 
 export abstract class FormModalUiHandler extends ModalUiHandler {
   protected editing = false;
@@ -78,16 +85,22 @@ export abstract class FormModalUiHandler extends ModalUiHandler {
       // The Pokédex Scan Window uses width `300` instead of `160` like the other forms
       // Therefore, the label does not need to be shortened
       const labelContent = this.getWidth() < 200 ? truncateString(config.label, 25) : config.label;
-      const label = addTextObject(10, labelY, labelContent, TextStyle.TOOLTIP_CONTENT);
+      const label = addTextObject(LABEL_LEFT, labelY, labelContent, TextStyle.TOOLTIP_CONTENT);
       label.name = "formLabel" + f;
 
       this.formLabels[f] = label;
       this.modalContainer.add(label);
 
       const inputWidth = label.width < 320 ? 80 : 80 - (label.width - 320) / 5.5;
-      const inputContainer = globalScene.add
-        .container(70 + (80 - inputWidth), (hasTitle ? 28 : 2) + 20 * f)
-        .setVisible(false);
+      const fieldLeft = 70 + (80 - inputWidth);
+      // Right-aligned against the field column, so "用户名" and "密码" finish at the same place
+      // instead of leaving a ragged edge beside the boxes. A label too wide for that gap keeps the
+      // left edge it had, which is the only way it stays inside the modal.
+      if (label.displayWidth <= fieldLeft - LABEL_GAP - LABEL_LEFT) {
+        label.setOrigin(1, 0).setX(fieldLeft - LABEL_GAP);
+      }
+
+      const inputContainer = globalScene.add.container(fieldLeft, (hasTitle ? 28 : 2) + 20 * f).setVisible(false);
 
       const inputBg = addWindow(0, 0, inputWidth, 16, false, false, 0, 0, WindowVariant.XTHIN);
 
@@ -110,6 +123,16 @@ export abstract class FormModalUiHandler extends ModalUiHandler {
 
   public override show(args: any[]): boolean {
     if (super.show(args)) {
+      // The text boxes are real DOM inputs sitting over the canvas, and they are placed against the
+      // size Phaser believes the canvas to be. Pixel snapping writes a smaller size onto it, which
+      // leaves every box wider than the one drawn under it - the caret lands away from the text and a
+      // click near the edge misses. Snapping stands down until the form is gone.
+      //
+      // Only for a form that actually has boxes: the sign-in chooser is one of these handlers with no
+      // fields at all, and giving up a crisp canvas there would buy nothing.
+      if (this.inputs.length > 0) {
+        suspendPixelSnap();
+      }
       for (const ic of this.inputContainers) {
         ic.setActive(true).setVisible(true);
       }
@@ -199,6 +222,7 @@ export abstract class FormModalUiHandler extends ModalUiHandler {
 
   public override clear(): void {
     super.clear();
+    resumePixelSnap();
     this.modalContainer.setVisible(false);
 
     for (const ic of this.inputContainers) {
