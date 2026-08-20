@@ -62,13 +62,19 @@ seen_ids = set()
 compact = []
 for fam in families:
     passive = next((m["p"] for m in fam if m["p"]), "")
+    # Rarity, like the passive, is registered against the family's first stage and describes the whole
+    # line: it is what the egg pool rolls on, and an egg hatches into the first stage regardless.
+    tier = next((m.get("tier") for m in fam if m.get("tier") is not None), None)
     rows = []
     for m in fam:
         if m["id"] in seen_ids:
             continue
         seen_ids.add(m["id"])
-        # [name, types, abilities, hidden, passive, stats, cost, depth, icon]
-        rows.append([m["n"], m["t"], m["a"], m["h"], m["p"] or passive, m["s"], m["c"], m["depth"], icon_for(m["id"])])
+        # [name, types, abilities, hidden, passive, stats, cost, depth, icon, tier]
+        rows.append([
+            m["n"], m["t"], m["a"], m["h"], m["p"] or passive, m["s"], m["c"], m["depth"],
+            icon_for(m["id"]), m.get("tier") if m.get("tier") is not None else tier,
+        ])
     if rows:
         compact.append(rows)
 
@@ -157,6 +163,12 @@ DEX = r"""<!doctype html>
   .stage.s0 { background:#2f4a6b; color:#bcd9f5; }
   .stage.s1 { background:#4a3f6b; color:#d0c6f5; }
   .stage.s2 { background:#6b4a2f; color:#f5d8bc; }
+  .tier { display:inline-block; min-width:3.4em; text-align:center; padding:1px 6px; border-radius:5px;
+    font-size:.76rem; font-weight:600; }
+  .tier.t0 { background:#3a3547; color:#c3bdd1; }
+  .tier.t1 { background:#25506e; color:#a9d6f5; }
+  .tier.t2 { background:#4a2d6b; color:#dcc0f5; }
+  .tier.t3 { background:#6b5510; color:#f7dd8a; }
   .name { font-weight:600; }
   .chip { display:inline-block; padding:1px 8px; border-radius:9px; font-size:.76rem;
     color:#14121b; font-weight:700; margin-right:3px; }
@@ -173,12 +185,20 @@ DEX = r"""<!doctype html>
 <header>
   <h1>宝可梦图鉴 · 成长路径与能力值</h1>
   <p>按进化家族排列：<b>初始 → 中级 → 终极</b>。数据与图标都取自游戏本体。<a href="./guide.html">← 游戏指南</a> · <a href="./guide-items.html">道具图鉴 →</a></p>
+  <p><b>「稀有度」</b>是这一族在扭蛋池里的档位：<span class="tier t0">普通</span> → <span class="tier t1">稀有</span> → <span class="tier t2">史诗</span> → <span class="tier t3">传说</span>。档位属于整条进化链，因为蛋孵出来的一定是第一阶段。</p>
   <p><b>「总计」</b>是六项数值相加，也就是这只宝可梦的<b>综合强度</b>。妙蛙种子 318 → 妙蛙草 405 → 妙蛙花 525，进化一次涨一截。一般来说 500 以上算强力，600 是传说级。</p>
 </header>
 
 <div class="controls">
   <input type="search" id="q" placeholder="搜名字，例如「妙蛙」「皮卡」…" autocomplete="off" />
   <select id="type"><option value="">全部属性</option></select>
+  <select id="tier">
+    <option value="">全部稀有度</option>
+    <option value="0">普通</option>
+    <option value="1">稀有</option>
+    <option value="2">史诗</option>
+    <option value="3">传说</option>
+  </select>
   <select id="cost">
     <option value="">全部</option>
     <option value="starter">只看可选初始</option>
@@ -191,6 +211,7 @@ DEX = r"""<!doctype html>
   <thead><tr>
     <th></th>
     <th>阶段</th>
+    <th data-k="tier">稀有度</th>
     <th data-k="name">名字</th>
     <th>属性</th>
     <th class="abil-h">特性</th>
@@ -239,6 +260,7 @@ const KEY = {
   hp: m => m[5][0], atk: m => m[5][1], def: m => m[5][2],
   spa: m => m[5][3], spd: m => m[5][4], spe: m => m[5][5],
   cost: m => (m[6] === null ? 99 : m[6]),
+  tier: m => (m[9] === null ? -1 : m[9]),
 };
 
 let sortKey = null;
@@ -251,8 +273,11 @@ function iconCell(ic) {
     + "px;background:url(" + url + ") -" + ic[1] + "px -" + ic[2] + 'px"></span></td>';
 }
 
+const TIER_NAMES = ["普通", "稀有", "史诗", "传说"];
+
 function row(m, maxD, famStart) {
   const name = m[0], types = m[1], abils = m[2], hidden = m[3], passive = m[4], stats = m[5], cost = m[6], depth = m[7];
+  const tier = m[9];
   const stage = stageLabel(depth, maxD);
   const chips = types.map(i => TYPES[i]
     ? '<span class="chip" style="background:' + TYPES[i][1] + '">' + TYPES[i][0] + '</span>' : "").join("");
@@ -267,6 +292,7 @@ function row(m, maxD, famStart) {
   return '<tr class="' + (famStart ? "fam-start" : "") + '">'
     + iconCell(m[8])
     + '<td><span class="stage ' + stage[1] + '">' + stage[0] + "</span></td>"
+    + "<td>" + (tier === null ? "" : '<span class="tier t' + tier + '">' + TIER_NAMES[tier] + "</span>") + "</td>"
     + '<td class="name">' + name + "</td><td>" + chips + '</td><td class="abil">' + ab + "</td>"
     + '<td class="n total">' + total + "</td>" + cells
     + '<td class="n">' + (cost === null ? "—" : cost) + "</td></tr>";
@@ -276,10 +302,12 @@ function render() {
   const q = document.getElementById("q").value.trim().toLowerCase();
   const t = document.getElementById("type").value;
   const onlyStarter = document.getElementById("cost").value === "starter";
+  const tierFilter = document.getElementById("tier").value;
 
   const matches = m =>
     (!q || m[0].toLowerCase().indexOf(q) !== -1)
     && (t === "" || m[1].indexOf(Number(t)) !== -1)
+    && (tierFilter === "" || m[9] === Number(tierFilter))
     && (!onlyStarter || m[6] !== null);
 
   const out = [];
@@ -314,12 +342,13 @@ document.querySelectorAll("thead th[data-k]").forEach(th => {
     render();
   });
 });
-["q", "type", "cost"].forEach(id =>
+["q", "type", "tier", "cost"].forEach(id =>
   document.getElementById(id).addEventListener(id === "q" ? "input" : "change", render));
 document.getElementById("reset").addEventListener("click", () => {
   document.getElementById("q").value = "";
   document.getElementById("type").value = "";
   document.getElementById("cost").value = "";
+  document.getElementById("tier").value = "";
   sortKey = null;
   document.querySelectorAll("thead th span.dir").forEach(s => s.remove());
   render();

@@ -146,6 +146,7 @@ for (const id of Object.values(SpeciesId).filter(v => typeof v === "number")) {
   seen.set(id, { id, n: s.getName(), t: [s.type1, s.type2].filter(t => t != null),
     a: [...new Set([s.ability1, s.ability2].filter(Boolean))].map(abName),
     h: s.abilityHidden ? abName(s.abilityHidden) : "", p: d.passives ? abName(d.passives) : "",
+    tier: d.eggTier ?? null,
     s: s.baseStats.slice(), c: d.starterCost ?? null, pre: d.prevolution ?? null,
     evo: (d.evolutions ?? []).map(e => ({ to: e.speciesId })) });
 }
@@ -180,6 +181,8 @@ python scripts/build-guide-pages.py <那个目录>
 ```
 
 会就地覆盖 `guide-dex.html` 和 `guide-items.html`。`guide.html` 是手写的，不由脚本生成。
+
+> `passives` 和 `eggTier` 都只登记在进化链的**第一阶段**上，后面的阶段读出来是空的。生成脚本会把它们沿家族往下继承——这两项描述的本来就是整条线：被动是用糖果为该种族解锁的，稀有度是扭蛋池的档位，而蛋孵出来一定是第一阶段。
 
 ## 跟上游保持同步
 
