@@ -5,6 +5,7 @@ import { HomeworkTaskStatus } from "#enums/homework-task-status";
 import { TextStyle } from "#enums/text-style";
 import { UiMode } from "#enums/ui-mode";
 import { bugLogSize, downloadBugLog } from "#system/bug-log";
+import { isParentSession, usesPinForParentMode } from "#system/family-session";
 import {
   COST_NEW_RUN,
   COST_RESUME_RUN,
@@ -103,7 +104,18 @@ export class HomeworkUiHandler extends MessageUiHandler {
   private scrollOffset = 0;
 
   /** Whether a parent has unlocked grading and planning for this visit. */
-  private parentMode = false;
+  /**
+   * Whether the PIN was entered during this visit.
+   *
+   * Only consulted when playing without an account. Signed in, the role on the account decides, so
+   * a child never has a PIN prompt to try in the first place - see {@linkcode parentMode}.
+   */
+  private pinUnlocked = false;
+
+  /** Whether the parent tools are available right now. */
+  private get parentMode(): boolean {
+    return isParentSession(this.pinUnlocked);
+  }
 
   /**
    * The title-screen options handed over by {@linkcode TitlePhase} when the planner is standing in
@@ -228,7 +240,7 @@ export class HomeworkUiHandler extends MessageUiHandler {
     this.playOptions = (args[0] as { playOptions?: OptionSelectItem[] } | undefined)?.playOptions ?? null;
     // Every visit starts as the child. Parent rights are re-earned with the PIN each time, so they
     // cannot leak into a later visit that reused this handler without it being cleared in between.
-    this.parentMode = false;
+    this.pinUnlocked = false;
     this.selectedDate = todayKey();
     this.scrollOffset = 0;
     // Entering the planner always starts from a bare screen: if a previous visit was torn down with
@@ -248,7 +260,7 @@ export class HomeworkUiHandler extends MessageUiHandler {
   public override clear(): void {
     super.clear();
     // Parent rights never outlive one visit to the planner.
-    this.parentMode = false;
+    this.pinUnlocked = false;
     this.playOptions = null;
     this.menuDepth = 0;
     this.mainContainer.setVisible(false);
@@ -677,21 +689,26 @@ export class HomeworkUiHandler extends MessageUiHandler {
       this.menuAction(i18next.t("homework:action.help"), () => this.showText(i18next.t("homework:help.text"), 0)),
     );
 
-    if (this.parentMode) {
-      options.push(
-        this.menuAction(i18next.t("homework:action.exitParentMode"), () => {
-          this.parentMode = false;
-          this.showText(i18next.t("homework:parent.modeOff"), 0);
-        }),
-      );
-    } else {
-      options.push({
-        label: i18next.t("homework:action.parentMode"),
-        handler: () => {
-          this.requestParentMode();
-          return true;
-        },
-      });
+    // Signed in, the account settles this and there is nothing to enter or leave: a parent already
+    // has the tools, and a child is never shown a way in to try. The PIN rows belong to the
+    // account-less mode, which has to keep working with no server reachable.
+    if (usesPinForParentMode()) {
+      if (this.pinUnlocked) {
+        options.push(
+          this.menuAction(i18next.t("homework:action.exitParentMode"), () => {
+            this.pinUnlocked = false;
+            this.showText(i18next.t("homework:parent.modeOff"), 0);
+          }),
+        );
+      } else {
+        options.push({
+          label: i18next.t("homework:action.parentMode"),
+          handler: () => {
+            this.requestParentMode();
+            return true;
+          },
+        });
+      }
     }
 
     options.push(this.cancelOption());
@@ -789,7 +806,7 @@ export class HomeworkUiHandler extends MessageUiHandler {
             return;
           }
           this.closeMenus();
-          this.parentMode = true;
+          this.pinUnlocked = true;
           this.refresh();
           this.showText(
             data.hasCustomPin()

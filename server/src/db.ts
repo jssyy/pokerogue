@@ -65,6 +65,19 @@ CREATE TABLE IF NOT EXISTS save_history (
 );
 CREATE INDEX IF NOT EXISTS save_history_key ON save_history(account_id, kind, slot, id DESC);
 
+-- Stamina a parent has awarded. Append-only, and writable only through a parent-authenticated
+-- request, which is what makes a grade something a child cannot forge for themselves. The balance
+-- the game shows is this total minus what the client reports having spent.
+CREATE TABLE IF NOT EXISTS stamina_credits (
+  id         INTEGER PRIMARY KEY,
+  account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  amount     INTEGER NOT NULL,
+  reason     TEXT    NOT NULL,
+  granted_by INTEGER REFERENCES accounts(id),
+  granted_at TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS stamina_credits_account ON stamina_credits(account_id, id DESC);
+
 CREATE TABLE IF NOT EXISTS homework (
   account_id INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
   data       TEXT    NOT NULL,

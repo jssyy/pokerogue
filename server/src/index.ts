@@ -52,6 +52,8 @@ const router = new Router()
   .post("/family/child/disabled", family.setDisabled)
   .get("/homework/get", homework.get)
   .post("/homework/update", homework.update)
+  .post("/homework/credit", homework.credit)
+  .get("/homework/credits", homework.credits)
   // Answered so a browser, a router check or a person can confirm the service is up.
   .get("/health", ctx => text(ctx, "ok"));
 

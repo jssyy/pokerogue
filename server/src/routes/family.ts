@@ -7,6 +7,9 @@ import { body, fail, json } from "../http.ts";
 
 const MIN_PASSWORD = 4;
 
+/** Stamina a new child starts with: one run's worth, matching `WELCOME_STAMINA` in the game. */
+const WELCOME_STAMINA = 30;
+
 /**
  * The parent's side of the account system: creating a child, and managing one afterwards.
  *
@@ -86,6 +89,12 @@ export function familyRoutes(db: Db) {
            VALUES (?, ?, 'child', ?, ?, ?)`,
         )
         .run(username, hashPassword(password), parent.id, payload?.displayName?.trim() || username, now());
+      // The welcome balance is credited here rather than granted by the child's own client, so that
+      // every credit on the account came from something a parent did. One run's worth, because a
+      // fresh account with nothing is a locked door.
+      db.prepare(
+        "INSERT INTO stamina_credits (account_id, amount, reason, granted_by, granted_at) VALUES (?, ?, 'welcome', ?, ?)",
+      ).run(Number(result.lastInsertRowid), WELCOME_STAMINA, parent.id, now());
       json(ctx, { id: Number(result.lastInsertRowid), username });
     },
 
