@@ -123,6 +123,56 @@ export function familyRoutes(db: Db) {
     },
 
     /**
+     * Changes the name shown next to a child.
+     *
+     * Only the display name; the sign-in name stays put because it is what the child types and what
+     * every row of their data is keyed to. A nickname is the part meant to be changed freely.
+     */
+    rename(ctx: Ctx): void {
+      const parent = requireParent(ctx);
+      if (!parent) {
+        return;
+      }
+      const payload = body<{ id?: number; displayName?: string }>(ctx);
+      const child = childOf(parent, payload?.id);
+      if (!child) {
+        return fail(ctx, "找不到这个孩子账号", 404);
+      }
+      const name = payload?.displayName?.trim();
+      if (!name) {
+        return fail(ctx, "昵称不能为空");
+      }
+      db.prepare("UPDATE accounts SET display_name = ? WHERE id = ?").run(name, child.id);
+      json(ctx, { success: true, displayName: name });
+    },
+
+    /**
+     * Removes a child account and everything belonging to it.
+     *
+     * The username has to be typed back before this runs. Everywhere else this service errs towards
+     * keeping progress - suspending rather than deleting - so the one action that really destroys it
+     * should cost more than a mis-click. Sessions, saves, homework and stamina credits all go with
+     * the row, through the foreign keys.
+     */
+    remove(ctx: Ctx): void {
+      const parent = requireParent(ctx);
+      if (!parent) {
+        return;
+      }
+      const payload = body<{ id?: number; confirm?: string }>(ctx);
+      const child = childOf(parent, payload?.id);
+      if (!child) {
+        return fail(ctx, "找不到这个孩子账号", 404);
+      }
+      if (payload?.confirm !== child.username) {
+        return fail(ctx, `要删除请把登录名原样打一遍：${child.username}`);
+      }
+      endAllSessions(db, child.id);
+      db.prepare("DELETE FROM accounts WHERE id = ?").run(child.id);
+      json(ctx, { success: true });
+    },
+
+    /**
      * Suspends or restores a child account.
      *
      * Deliberately not a delete: nothing here removes a child's progress, because the point of the

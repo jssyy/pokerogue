@@ -36,7 +36,8 @@
   .msg.err { background:#e8542f1a; border-left:3px solid var(--accent); }
   .hidden { display:none; }
   footer { margin-top:40px; color:var(--ink-faint); font-size:.85rem; border-top:1px solid var(--line); padding-top:16px; }
-</style>
+    .danger { border-color: #7a3326; color: #f0855f; }
+  </style>
 </head>
 <body>
 <div class="wrap">
@@ -81,7 +82,7 @@
 
   <footer>
     <p>新建孩子账号时会自动发放 30 点体力（一局的量），否则新账号就是一扇打不开的门。</p>
-    <p>「停用」不会删除任何进度，只是暂时不能登录，随时可以恢复。</p>
+    <p>「停用」不会删除任何进度，只是暂时不能登录，随时可以恢复。<b>「删除」会把存档、作业和体力一并清掉，不可恢复</b>，所以要把登录名原样打一遍才执行。</p>
   </footer>
 </div>
 
@@ -139,8 +140,10 @@ async function refresh() {
         <td class="muted">${when(c.lastSeen)}</td>
         <td>${c.disabled ? '<span class="off">已停用</span>' : "正常"}</td>
         <td style="text-align:right; white-space:nowrap">
+          <button class="ghost" data-name-edit="${c.id}" data-current="${c.displayName || c.username}">改昵称</button>
           <button class="ghost" data-pw="${c.id}">改密码</button>
           <button class="ghost" data-toggle="${c.id}" data-to="${c.disabled ? 0 : 1}">${c.disabled ? "恢复" : "停用"}</button>
+          <button class="ghost danger" data-del="${c.id}" data-name="${c.username}">删除</button>
         </td>
       </tr>`).join("");
 }
@@ -188,6 +191,28 @@ $("rows").onclick = async event => {
     if (!value) return;
     const res = await api("/family/child/password", { method: "POST", body: JSON.stringify({ id: Number(pw), password: value }) });
     say(res.ok ? "密码改好了，这个孩子已登录的设备都要重新登录。" : await res.text(), res.ok);
+  }
+  const rename = event.target.dataset.nameEdit;
+  if (rename) {
+    const value = prompt("新的昵称：", event.target.dataset.current);
+    if (value === null) return;
+    const res = await api("/family/child/rename", { method: "POST", body: JSON.stringify({ id: Number(rename), displayName: value }) });
+    if (!res.ok) return say(await res.text(), false);
+    refresh();
+  }
+
+  const del = event.target.dataset.del;
+  if (del) {
+    const name = event.target.dataset.name;
+    // Typed back rather than a yes/no box: this is the one action that really destroys progress,
+    // and a confirm dialog is answered without reading it.
+    const typed = prompt(`删除后这个账号的存档、作业和体力都会一起没掉，无法恢复。
+确认请输入登录名：${name}`);
+    if (!typed) return;
+    const res = await api("/family/child/delete", { method: "POST", body: JSON.stringify({ id: Number(del), confirm: typed.trim() }) });
+    if (!res.ok) return say(await res.text(), false);
+    say("已删除。", true);
+    refresh();
   }
   if (toggle) {
     const res = await api("/family/child/disabled", {
