@@ -1,3 +1,5 @@
+import { pokerogueApi } from "#api/api";
+import { updateUserInfo } from "#app/account";
 import { globalScene } from "#app/global-scene";
 import { Button } from "#enums/buttons";
 import type { HomeworkSubject } from "#enums/homework-subject";
@@ -7,6 +9,7 @@ import { UiMode } from "#enums/ui-mode";
 import { bugLogSize, downloadBugLog } from "#system/bug-log";
 import {
   creditStamina,
+  currentAccountName,
   isParentAccount,
   isParentSession,
   isSignedIn,
@@ -705,6 +708,19 @@ export class HomeworkUiHandler extends MessageUiHandler {
       this.menuAction(i18next.t("homework:action.help"), () => this.showText(i18next.t("homework:help.text"), 0)),
     );
 
+    // With an account, this is the only way to hand the screen to somebody else: a parent needs it to
+    // grade on the child's device, and a second child needs it to reach their own plan. Without an
+    // account there is nobody to sign out of.
+    if (isSignedIn()) {
+      options.push({
+        label: i18next.t("homework:sync.signOut"),
+        handler: () => {
+          this.confirmSignOut();
+          return true;
+        },
+      });
+    }
+
     // Signed in, the account settles this and there is nothing to enter or leave: a parent already
     // has the tools, and a child is never shown a way in to try. The PIN rows belong to the
     // account-less mode, which has to keep working with no server reachable.
@@ -729,6 +745,40 @@ export class HomeworkUiHandler extends MessageUiHandler {
 
     options.push(this.cancelOption());
     this.openMenu(options);
+  }
+
+  /**
+   * Signs the current account out and returns to the sign-in screen.
+   *
+   * Asked first, and worded to say what does not get lost: the fear this whole account system exists
+   * to remove is a child believing they have thrown their week away by tapping the wrong row.
+   */
+  private confirmSignOut(): void {
+    const ui = this.getUi();
+    this.menuDepth++;
+    ui.setOverlayMode(
+      UiMode.CONFIRM,
+      () => {
+        this.closeMenus();
+        void this.signOut();
+      },
+      () => {
+        this.closeMenus();
+        this.showHint();
+      },
+    );
+    this.showText(i18next.t("homework:sync.signOutConfirm", { name: currentAccountName() ?? "" }), 0);
+  }
+
+  /** Pushes anything still pending, then drops the session and resets back to sign-in. */
+  private async signOut(): Promise<void> {
+    // The plan is written on a delay, so a grade given moments ago may not have left yet, and after
+    // the session is gone there is no account to send it to.
+    await homeworkManager.flushPush();
+    await pokerogueApi.account.logout();
+    await updateUserInfo();
+    homeworkManager.invalidate();
+    globalScene.reset(true, true);
   }
 
   // #endregion Main menu

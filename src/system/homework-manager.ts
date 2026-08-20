@@ -140,6 +140,24 @@ class HomeworkManager {
   }
 
   /**
+   * Sends any pending change now rather than on the timer.
+   *
+   * Signing out drops the account this plan belongs to, so a change made in the last second and a
+   * half would be pushed against nobody. Waiting for this is the difference between "graded, then
+   * switched accounts" keeping the grade and losing it.
+   */
+  public async flushPush(): Promise<void> {
+    if (this.pushTimer != null) {
+      clearTimeout(this.pushTimer);
+      this.pushTimer = null;
+    }
+    if (!isSignedIn() || this.data == null) {
+      return;
+    }
+    await pushHomework(JSON.stringify(this.data.toSaveData()), this.activeChildId ?? undefined);
+  }
+
+  /**
    * Brings the local copy in line with the service.
    *
    * The earned total always comes from the service - it is the number a child must not be able to
