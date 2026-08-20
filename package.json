@@ -9,6 +9,7 @@
     "start:dev": "vite --mode development",
     "start:family": "vite --mode family",
     "start:server": "node --experimental-sqlite server/src/index.ts",
+    "restart:server": "node server/scripts/restart.mjs",
     "build:family": "vite build --mode family",
     "start:podman": "vite --mode development --host 0.0.0.0 --port $PORT",
     "build": "vite build",

@@ -156,6 +156,22 @@ const server = createServer(async (req, res) => {
   }
 });
 
+/**
+ * Says what happened, rather than letting an unhandled `error` event print a stack trace.
+ *
+ * A port already in use is the most likely way to fail to start - a service left running from
+ * earlier - and a twenty line dump about `listenInCluster` buries the one sentence that helps.
+ */
+server.on("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`端口 ${PORT} 已经被占用了 —— 多半是已经有一个账号服务在跑，不用再起第二个。`);
+    console.error(`想确认是谁占着：  npx kill-port ${PORT}   或者  netstat -ano | findstr :${PORT}`);
+    process.exit(1);
+  }
+  console.error("服务启动失败", err);
+  process.exit(1);
+});
+
 server.listen(PORT, () => {
   const accounts = db.prepare("SELECT COUNT(*) AS n FROM accounts").get() as { n: number };
   console.log(`作业勇者账号服务 → http://localhost:${PORT}`);

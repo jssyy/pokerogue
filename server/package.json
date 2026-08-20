@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "node --experimental-sqlite src/index.ts",
+    "restart": "node scripts/restart.mjs",
     "dev": "node --experimental-sqlite --watch src/index.ts"
   }
 }
