@@ -1,0 +1,14 @@
+{
+  "name": "homework-quest-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "作业勇者的账号与存档服务：家长建号、孩子登录、游戏存档与作业数据云同步",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "start": "node --experimental-sqlite src/index.ts",
+    "dev": "node --experimental-sqlite --watch src/index.ts"
+  }
+}
