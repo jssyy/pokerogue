@@ -10,6 +10,7 @@ export const HOMEWORK_NS = "homework";
 const zhHans = {
   name: "作业勇者",
   guide: { menu: "游戏指南", opened: "指南已在新标签页打开。" },
+  login: { prompt: "用爸爸妈妈给你的账号登录，开始今天的冒险。" },
   sync: {
     creditFailed: "连不上账号服务，这次打分还没记到云端。等联网后会自动对账。",
     switchChild: "切换孩子",
@@ -223,6 +224,7 @@ const zhHans = {
 const en: typeof zhHans = {
   name: "Homework Quest",
   guide: { menu: "Game guide", opened: "The guide opened in a new tab." },
+  login: { prompt: "Sign in with the account your parent set up for you." },
   sync: {
     creditFailed: "Could not reach the account service; this grade is not saved to the cloud yet.",
     switchChild: "Switch child",

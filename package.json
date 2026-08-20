@@ -7,6 +7,7 @@
     "start:prod": "vite --mode production",
     "start:beta": "vite --mode beta",
     "start:dev": "vite --mode development",
+    "play": "node scripts/play.mjs",
     "start:family": "vite --mode family",
     "start:server": "node --experimental-sqlite server/src/index.ts",
     "restart:server": "node server/scripts/restart.mjs",

@@ -9,7 +9,6 @@ import { getBiomeHasProps } from "#field/arena";
 import { initializeGame } from "#init/init";
 import { CacheBustedLoaderPlugin } from "#plugins/cache-busted-loader-plugin";
 import { sharpenUiTextures } from "#system/crisp-ui-textures";
-import { isHomeworkHomeScreen } from "#system/homework-gate";
 import { getWindowVariantSuffix, WindowVariant } from "#ui/ui-theme";
 import { hasAllLocalizedSprites, localPing } from "#utils/common";
 import { enumValueToKey, getEnumValues } from "#utils/enums";
@@ -473,10 +472,14 @@ export class LoadingScene extends SceneBase {
       disclaimerDescriptionText,
     );
 
-    // The studio video is PokeRogue's own front door. With the homework planner in charge of the
-    // boot flow, our cutscene is the opener instead, so the video is skipped and the loading screen
-    // shows straight away. Credit for the base game is given in that cutscene.
-    const playStudioIntro = !isHomeworkHomeScreen();
+    // The studio video is PokeRogue's own front door, and this build has its own: the sign-in screen
+    // and then the cutscene. Two openers before a child reaches their homework is one too many, so it
+    // never plays here and the loading screen shows straight away.
+    //
+    // Not conditional on the gate any more. That check reads the plan, and during loading nobody has
+    // signed in yet, so it answered for whatever plan the browser happened to hold rather than for
+    // this build. Credit for the base game is given in the cutscene and on the sign-in screen.
+    const playStudioIntro = false;
 
     if (!mobile && playStudioIntro) {
       loadingGraphics.forEach(g => {

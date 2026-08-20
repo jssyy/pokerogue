@@ -188,17 +188,22 @@ python scripts/build-guide-pages.py <那个目录>
 
 `pnpm start:dev` **不会**出现登录界面：`.env.development` 里 `VITE_BYPASS_LOGIN=1`，那是上游给纯本地开发用的模式，账号、云存档、家长身份全都不参与。带账号玩要用 `family` 模式。
 
-两个终端，**都在仓库根目录 `G:\pokerogue` 下**：
+一条命令，在仓库根目录 `G:\pokerogue` 下：
 
 ```bash
-pnpm start:server
+pnpm play
 ```
 
-```bash
-pnpm start:family
+账号服务和游戏一起起来，`Ctrl+C` 一起停掉：
+
+```
+  游戏      http://localhost:8000        孩子在这里玩
+  账号管理  http://localhost:8001        家长在这里建号、改密码
 ```
 
-第一条是账号服务（8001，数据在 `server/data/`），第二条是游戏（8000，不跳过登录，指向 `localhost:8001`）。
+它会先把上次残留的服务停掉，两个端口都确认到手再启动——**Vite 端口被占时会自己往后挪**，那正是「怎么打开是旧界面」的来源。停掉哪个进程是认过身份才动手的：账号服务看 `/health` 的回答，游戏服务看 `/@vite/client`，认不出来的一律不碰、直接报出来让人自己看。
+
+要分开跑也行（两个终端）：`pnpm start:server` 和 `pnpm start:family`；账号服务单独重启用 `pnpm restart:server`。
 
 > `start:family` 在根目录的 `package.json` 里，**在 `server/` 目录下跑会报 `Command "start:family" not found`**。服务端也可以照旧 `cd server && npm start`，两种起法用的是同一份数据。
 
