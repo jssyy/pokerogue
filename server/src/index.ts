@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
-import { copyFileSync, mkdirSync, readdirSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, unlinkSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { openDb } from "./db.ts";
 import { accountRoutes } from "./routes/account.ts";
 import { savedataRoutes } from "./routes/savedata.ts";
@@ -54,6 +55,23 @@ const router = new Router()
   .post("/homework/update", homework.update)
   .post("/homework/credit", homework.credit)
   .get("/homework/credits", homework.credits)
+  // Whether anyone has registered yet, so the management page knows to offer the one-time setup.
+  .get("/family/bootstrap", ctx => {
+    const count = db.prepare("SELECT COUNT(*) AS n FROM accounts").get() as { n: number };
+    ctx.res.writeHead(200, { "Content-Type": "application/json" });
+    ctx.res.end(JSON.stringify({ empty: count.n === 0 }));
+  })
+  // The management page. Creating an account is a typing job, and a web page does that far better
+  // than a pixel-art dialog in the game would.
+  .get("/", ctx => {
+    try {
+      const page = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "public", "admin.html"));
+      ctx.res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      ctx.res.end(page);
+    } catch {
+      text(ctx, "管理页缺失", 500);
+    }
+  })
   // Answered so a browser, a router check or a person can confirm the service is up.
   .get("/health", ctx => text(ctx, "ok"));
 

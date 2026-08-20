@@ -10,6 +10,13 @@ export const HOMEWORK_NS = "homework";
 const zhHans = {
   name: "作业勇者",
   guide: { menu: "游戏指南", opened: "指南已在新标签页打开。" },
+  sync: {
+    creditFailed: "连不上账号服务，这次打分还没记到云端。等联网后会自动对账。",
+    switchChild: "切换孩子",
+    noChildren: "还没有孩子账号。请在电脑上打开账号服务的管理页创建。",
+    switched: "已切换到 {{name}}。",
+    offline: "连不上账号服务，先按本地数据继续。",
+  },
   today: "今天",
   yesterday: "昨天",
   tomorrow: "明天",
@@ -216,6 +223,13 @@ const zhHans = {
 const en: typeof zhHans = {
   name: "Homework Quest",
   guide: { menu: "Game guide", opened: "The guide opened in a new tab." },
+  sync: {
+    creditFailed: "Could not reach the account service; this grade is not saved to the cloud yet.",
+    switchChild: "Switch child",
+    noChildren: "No child accounts yet. Create one from the service's management page.",
+    switched: "Now showing {{name}}.",
+    offline: "Could not reach the account service; carrying on with the local copy.",
+  },
   today: "Today",
   yesterday: "Yesterday",
   tomorrow: "Tomorrow",

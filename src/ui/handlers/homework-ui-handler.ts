@@ -5,7 +5,14 @@ import { HomeworkTaskStatus } from "#enums/homework-task-status";
 import { TextStyle } from "#enums/text-style";
 import { UiMode } from "#enums/ui-mode";
 import { bugLogSize, downloadBugLog } from "#system/bug-log";
-import { isParentSession, usesPinForParentMode } from "#system/family-session";
+import {
+  creditStamina,
+  isParentAccount,
+  isParentSession,
+  isSignedIn,
+  listChildren,
+  usesPinForParentMode,
+} from "#system/family-session";
 import {
   COST_NEW_RUN,
   COST_RESUME_RUN,
@@ -669,6 +676,15 @@ export class HomeworkUiHandler extends MessageUiHandler {
         },
       );
     }
+    if (isParentAccount()) {
+      options.push({
+        label: i18next.t("homework:sync.switchChild"),
+        handler: () => {
+          void this.openChildPicker();
+          return true;
+        },
+      });
+    }
 
     options.push(
       {
@@ -842,10 +858,16 @@ export class HomeworkUiHandler extends MessageUiHandler {
   }
 
   private gradeTask(task: HomeworkTask, stars: StarRating): void {
+    // The rules engine stays on the client - it is where the tuning table lives - but the number it
+    // produces has to be countersigned. The local total moves first so the parent sees the result at
+    // once, and the difference is then sent up; if that fails, the next sync overwrites the local
+    // total with the service's, which rolls the optimistic gain back on its own.
+    const before = homeworkManager.get().totalEarned;
     const result = homeworkManager.mutate(d => d.scoreTask(task.id, stars));
     if (result == null) {
       return;
     }
+    void this.countersignGrade(homeworkManager.get().totalEarned - before, stars);
 
     const starText = "★".repeat(stars);
     const lines = [
@@ -863,6 +885,62 @@ export class HomeworkUiHandler extends MessageUiHandler {
     }
 
     this.showText(lines.join("\n"), 0);
+  }
+
+  /**
+   * Lets a parent choose which child's plan the planner is showing.
+   *
+   * A parent's own plan is empty - they are not the one doing the homework - so a parent session
+   * always works on a child's, and this is how they pick.
+   */
+  private async openChildPicker(): Promise<void> {
+    const children = await listChildren();
+    if (children == null) {
+      this.closeMenus();
+      this.showText(i18next.t("homework:sync.offline"), 0);
+      return;
+    }
+    const usable = children.filter(child => !child.disabled);
+    if (usable.length === 0) {
+      this.closeMenus();
+      this.showText(i18next.t("homework:sync.noChildren"), 0);
+      return;
+    }
+    this.openMenu([
+      ...usable.map(child =>
+        this.menuAction(child.displayName, () => {
+          void this.switchToChild(child.id, child.displayName);
+        }),
+      ),
+      this.cancelOption(),
+    ]);
+  }
+
+  private async switchToChild(childId: number, name: string): Promise<void> {
+    const ok = await homeworkManager.viewChild(childId);
+    this.refresh();
+    this.showText(i18next.t(ok ? "homework:sync.switched" : "homework:sync.offline", { name }), 0);
+  }
+
+  /**
+   * Records the award with the family service, which is the only place it counts.
+   *
+   * Nothing happens when playing without an account: there is no service to countersign anything,
+   * and the PIN is doing the job the sign-in would have.
+   */
+  private async countersignGrade(amount: number, stars: StarRating): Promise<void> {
+    const child = homeworkManager.viewingChild;
+    if (!isSignedIn() || child == null || amount <= 0) {
+      return;
+    }
+    const earned = await creditStamina(child, amount, `grade:${stars}star`);
+    if (earned == null) {
+      // Said out loud, because the balance on screen is now ahead of the one that will survive.
+      this.showText(i18next.t("homework:sync.creditFailed"), 0);
+      return;
+    }
+    homeworkManager.applyRemote({ data: null, earned });
+    this.refresh();
   }
 
   private confirmDelete(task: HomeworkTask): void {

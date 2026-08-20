@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>作业勇者 · 账号管理</title>
+<style>
+  :root {
+    --ink:#eceaf2; --ink-dim:#a9a3bb; --ink-faint:#6f6883;
+    --bg:#1b1823; --panel:#2a2436; --panel-2:#332b42; --line:#453c58;
+    --accent:#e8542f; --accent-soft:#f0855f; --gold:#f2c14e; --green:#4fc98a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.6 "Microsoft YaHei","PingFang SC","Noto Sans CJK SC",system-ui,sans-serif; }
+  .wrap { max-width:860px; margin:0 auto; padding:32px 20px 80px; }
+  h1 { margin:0 0 4px; font-size:1.6rem; color:var(--gold); }
+  .lede { margin:0 0 24px; color:var(--ink-dim); }
+  h2 { font-size:1.1rem; margin:28px 0 10px; color:var(--accent-soft); }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px 20px; margin:14px 0; }
+  label { display:block; font-size:.86rem; color:var(--ink-dim); margin:10px 0 4px; }
+  input { width:100%; background:var(--panel-2); color:var(--ink); border:1px solid var(--line);
+    border-radius:8px; padding:9px 12px; font:inherit; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:8px;
+    padding:9px 16px; font:inherit; cursor:pointer; margin-top:14px; }
+  button.ghost { background:transparent; color:var(--ink-dim); border:1px solid var(--line); margin:0 0 0 6px; padding:5px 10px; font-size:.84rem; }
+  button:hover { filter:brightness(1.1); }
+  table { border-collapse:collapse; width:100%; margin-top:10px; font-size:.92rem; }
+  th, td { border-bottom:1px solid var(--line); padding:9px 8px; text-align:left; vertical-align:middle; }
+  th { color:var(--ink-dim); font-weight:600; font-size:.84rem; }
+  .muted { color:var(--ink-faint); font-size:.84rem; }
+  .off { color:var(--accent-soft); }
+  .msg { margin-top:12px; padding:10px 14px; border-radius:8px; display:none; }
+  .msg.show { display:block; }
+  .msg.ok { background:#4fc98a1a; border-left:3px solid var(--green); }
+  .msg.err { background:#e8542f1a; border-left:3px solid var(--accent); }
+  .hidden { display:none; }
+  footer { margin-top:40px; color:var(--ink-faint); font-size:.85rem; border-top:1px solid var(--line); padding-top:16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>作业勇者 · 账号管理</h1>
+  <p class="lede">家长在这里给孩子建号、改密码、停用或恢复。孩子的进度不会被任何操作删掉。</p>
+
+  <div id="msg" class="msg"></div>
+
+  <!-- Sign in -->
+  <section id="loginBox" class="card">
+    <h2 style="margin-top:0">家长登录</h2>
+    <p class="muted" id="bootstrapHint"></p>
+    <label for="u">用户名</label>
+    <input id="u" autocomplete="username" />
+    <label for="p">密码</label>
+    <input id="p" type="password" autocomplete="current-password" />
+    <button id="loginBtn">登录</button>
+    <button id="registerBtn" class="ghost hidden">建立家长账号</button>
+  </section>
+
+  <!-- Management -->
+  <section id="manageBox" class="hidden">
+    <h2>孩子账号</h2>
+    <table>
+      <thead><tr><th>名字</th><th>登录名</th><th>最后游玩</th><th>状态</th><th></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+
+    <div class="card">
+      <h2 style="margin-top:0">新建孩子账号</h2>
+      <label for="cu">登录名（孩子用它登录，建议用拼音）</label>
+      <input id="cu" autocomplete="off" />
+      <label for="cd">显示名字</label>
+      <input id="cd" autocomplete="off" />
+      <label for="cp">密码（至少 4 位）</label>
+      <input id="cp" type="password" autocomplete="new-password" />
+      <button id="createBtn">创建</button>
+    </div>
+
+    <button id="logoutBtn" class="ghost" style="margin-top:20px">退出登录</button>
+  </section>
+
+  <footer>
+    <p>新建孩子账号时会自动发放 30 点体力（一局的量），否则新账号就是一扇打不开的门。</p>
+    <p>「停用」不会删除任何进度，只是暂时不能登录，随时可以恢复。</p>
+  </footer>
+</div>
+
+<script>
+// The token lives in session storage rather than a cookie: this page is only ever used for a few
+// minutes at a time, and not persisting it means a shared computer does not stay signed in.
+const KEY = "homeworkAdminToken";
+let token = sessionStorage.getItem(KEY);
+
+const $ = id => document.getElementById(id);
+
+function say(text, ok = true) {
+  const box = $("msg");
+  box.textContent = text;
+  box.className = `msg show ${ok ? "ok" : "err"}`;
+  if (ok) setTimeout(() => box.classList.remove("show"), 4000);
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    ...options,
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: token } : {}), ...options.headers },
+  });
+  return res;
+}
+
+function when(date) {
+  if (!date) return "—";
+  const d = new Date(date);
+  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (days === 0) return "今天";
+  if (days === 1) return "昨天";
+  return `${days} 天前`;
+}
+
+async function refresh() {
+  const res = await api("/family/children");
+  if (!res.ok) {
+    token = null;
+    sessionStorage.removeItem(KEY);
+    $("loginBox").classList.remove("hidden");
+    $("manageBox").classList.add("hidden");
+    return;
+  }
+  const { children } = await res.json();
+  $("loginBox").classList.add("hidden");
+  $("manageBox").classList.remove("hidden");
+
+  $("rows").innerHTML = children.length === 0
+    ? '<tr><td colspan="5" class="muted">还没有孩子账号，用下面的表单建一个。</td></tr>'
+    : children.map(c => `
+      <tr>
+        <td><b>${c.displayName}</b></td>
+        <td class="muted">${c.username}</td>
+        <td class="muted">${when(c.lastSeen)}</td>
+        <td>${c.disabled ? '<span class="off">已停用</span>' : "正常"}</td>
+        <td style="text-align:right; white-space:nowrap">
+          <button class="ghost" data-pw="${c.id}">改密码</button>
+          <button class="ghost" data-toggle="${c.id}" data-to="${c.disabled ? 0 : 1}">${c.disabled ? "恢复" : "停用"}</button>
+        </td>
+      </tr>`).join("");
+}
+
+$("loginBtn").onclick = async () => {
+  const res = await fetch("/account/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
+    body: new URLSearchParams({ username: $("u").value, password: $("p").value }),
+  });
+  if (!res.ok) return say(await res.text(), false);
+  token = (await res.json()).token;
+  sessionStorage.setItem(KEY, token);
+  $("p").value = "";
+  refresh();
+};
+
+$("registerBtn").onclick = async () => {
+  const res = await fetch("/account/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
+    body: new URLSearchParams({ username: $("u").value, password: $("p").value }),
+  });
+  if (!res.ok) return say(await res.text(), false);
+  say("家长账号建好了，现在登录。");
+  $("loginBtn").click();
+};
+
+$("createBtn").onclick = async () => {
+  const res = await api("/family/child/create", {
+    method: "POST",
+    body: JSON.stringify({ username: $("cu").value.trim(), password: $("cp").value, displayName: $("cd").value.trim() }),
+  });
+  if (!res.ok) return say(await res.text(), false);
+  $("cu").value = $("cd").value = $("cp").value = "";
+  say("建好了，孩子可以用这个账号登录游戏了。");
+  refresh();
+};
+
+$("rows").onclick = async event => {
+  const pw = event.target.dataset.pw;
+  const toggle = event.target.dataset.toggle;
+  if (pw) {
+    const value = prompt("给这个孩子设置新密码（至少 4 位）：");
+    if (!value) return;
+    const res = await api("/family/child/password", { method: "POST", body: JSON.stringify({ id: Number(pw), password: value }) });
+    say(res.ok ? "密码改好了，这个孩子已登录的设备都要重新登录。" : await res.text(), res.ok);
+  }
+  if (toggle) {
+    const res = await api("/family/child/disabled", {
+      method: "POST",
+      body: JSON.stringify({ id: Number(toggle), disabled: event.target.dataset.to === "1" }),
+    });
+    if (!res.ok) return say(await res.text(), false);
+    refresh();
+  }
+};
+
+$("logoutBtn").onclick = async () => {
+  await api("/account/logout");
+  token = null;
+  sessionStorage.removeItem(KEY);
+  refresh();
+};
+
+// A service with no accounts yet needs a way to make the first one; after that the button is gone,
+// because registration closes and children are created from here instead.
+(async () => {
+  const res = await fetch("/family/bootstrap");
+  if (res.ok && (await res.json()).empty) {
+    $("registerBtn").classList.remove("hidden");
+    $("bootstrapHint").textContent = "还没有任何账号：填好用户名和密码，点「建立家长账号」。";
+  }
+  if (token) refresh();
+})();
+</script>
+</body>
+</html>
