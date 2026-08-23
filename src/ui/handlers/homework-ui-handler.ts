@@ -122,6 +122,9 @@ export class HomeworkUiHandler extends MessageUiHandler {
    */
   private pinUnlocked = false;
 
+  /** Display name of the child a parent is looking at, so the header can say whose plan this is. */
+  private viewingChildName: string | null = null;
+
   /** Whether the parent tools are available right now. */
   private get parentMode(): boolean {
     return isParentSession(this.pinUnlocked);
@@ -251,6 +254,7 @@ export class HomeworkUiHandler extends MessageUiHandler {
     // Every visit starts as the child. Parent rights are re-earned with the PIN each time, so they
     // cannot leak into a later visit that reused this handler without it being cleared in between.
     this.pinUnlocked = false;
+    this.viewingChildName = null;
     this.selectedDate = todayKey();
     this.scrollOffset = 0;
     // Entering the planner always starts from a bare screen: if a previous visit was torn down with
@@ -263,8 +267,45 @@ export class HomeworkUiHandler extends MessageUiHandler {
     this.refresh();
     this.setCursor(0);
     this.showHint();
+    void this.pullFromService();
 
     return true;
+  }
+
+  /**
+   * Brings the plan and the balance in line with the service every time the planner opens.
+   *
+   * Stamina earned is the service's number, and until this runs the screen is showing whatever this
+   * browser happens to hold - which on a child's first sign-in is nothing at all. That is what made
+   * a parent's grading look like it had never happened: it had, on the service, and nobody ever
+   * asked. Unreachable is not an error; the local copy carries on.
+   */
+  private async pullFromService(): Promise<void> {
+    if (!isSignedIn()) {
+      return;
+    }
+    // A parent has no homework of their own, so the planner is always about a child. Landing on the
+    // parent's own empty plan is what made "give stamina" hand the stamina to nobody.
+    if (isParentAccount() && homeworkManager.viewingChild == null) {
+      const first = (await listChildren())?.find(child => !child.disabled);
+      if (first) {
+        await homeworkManager.viewChild(first.id);
+        this.viewingChildName = first.displayName;
+        if (this.active) {
+          this.refresh();
+          this.showHint();
+        }
+        return;
+      }
+    }
+    if (!(await homeworkManager.sync())) {
+      return;
+    }
+    // The planner may have been left in the meantime; repainting a hidden screen is wasted work and
+    // would fight whatever is on top of it.
+    if (this.active) {
+      this.refresh();
+    }
   }
 
   public override clear(): void {
@@ -294,9 +335,12 @@ export class HomeworkUiHandler extends MessageUiHandler {
     }
     this.clampScroll();
 
+    // Whose plan this is matters most to a parent with more than one child, and a parent who cannot
+    // see it has no way to notice they are grading the wrong one.
+    const whose = this.viewingChildName ? `　${this.viewingChildName}` : "";
     this.titleText.setText(
       this.parentMode
-        ? `${i18next.t("homework:name")}　${i18next.t("homework:action.parentMode")}`
+        ? `${i18next.t("homework:name")}　${i18next.t("homework:action.parentMode")}${whose}`
         : i18next.t("homework:name"),
     );
     this.staminaText.setText(i18next.t("homework:staminaValue", { amount: data.stamina }));
@@ -968,6 +1012,7 @@ export class HomeworkUiHandler extends MessageUiHandler {
 
   private async switchToChild(childId: number, name: string): Promise<void> {
     const ok = await homeworkManager.viewChild(childId);
+    this.viewingChildName = name;
     this.refresh();
     this.showText(i18next.t(ok ? "homework:sync.switched" : "homework:sync.offline", { name }), 0);
   }
@@ -979,11 +1024,21 @@ export class HomeworkUiHandler extends MessageUiHandler {
    * and the PIN is doing the job the sign-in would have.
    */
   private async countersignGrade(amount: number, stars: StarRating): Promise<void> {
+    await this.countersignGrant(amount, `grade:${stars}star`);
+  }
+
+  /**
+   * Records an award of stamina with the family service, which is the only place it counts.
+   *
+   * Nothing happens when playing without an account: there is no service to countersign anything,
+   * and the PIN is doing the job the sign-in would have.
+   */
+  private async countersignGrant(amount: number, reason: string): Promise<void> {
     const child = homeworkManager.viewingChild;
     if (!isSignedIn() || child == null || amount <= 0) {
       return;
     }
-    const earned = await creditStamina(child, amount, `grade:${stars}star`);
+    const earned = await creditStamina(child, amount, reason);
     if (earned == null) {
       // Said out loud, because the balance on screen is now ahead of the one that will survive.
       this.showText(i18next.t("homework:sync.creditFailed"), 0);
@@ -1133,8 +1188,16 @@ export class HomeworkUiHandler extends MessageUiHandler {
         this.showText(i18next.t(wasFree ? "homework:parent.freePassOff" : "homework:parent.freePassOn"), 0);
       }),
       this.menuAction(i18next.t("homework:parent.grantStamina", { amount: PARENT_GRANT_AMOUNT }), () => {
+        // Signed in, stamina is the service's number and a gift has to name whose balance it joins.
+        // Adding it to this browser alone is what made the gift show up on the parent's screen and
+        // be simply absent when the child signed in.
+        if (isSignedIn() && homeworkManager.viewingChild == null) {
+          this.showText(i18next.t("homework:sync.pickChildFirst"), 0);
+          return;
+        }
         homeworkManager.mutate(d => d.earn(PARENT_GRANT_AMOUNT, "parentGrant"));
         this.showText(i18next.t("homework:parent.granted", { amount: PARENT_GRANT_AMOUNT }), 0);
+        void this.countersignGrant(PARENT_GRANT_AMOUNT, "parentGrant");
       }),
       {
         label: i18next.t("homework:parent.changePin"),

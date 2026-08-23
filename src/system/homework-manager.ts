@@ -12,8 +12,11 @@ import { AES, enc } from "crypto-js";
  * save, so that a cloud save overwriting the account data can never wipe the child's plan, and so
  * that PokéRogue's own save migrations never have to know about it.
  */
-function getStorageKey(): string {
-  return `homeworkQuest_${loggedInUser?.username ?? "guest"}`;
+function getStorageKey(childId: number | null = null): string {
+  const owner = loggedInUser?.username ?? "guest";
+  // A parent looking at a child's plan must not read or write their own. Without the child in the
+  // key, switching to a child showed the parent their own plan and then pushed it over the child's.
+  return childId == null ? `homeworkQuest_${owner}` : `homeworkQuest_${owner}_child${childId}`;
 }
 
 /**
@@ -58,6 +61,14 @@ class HomeworkManager {
   private pushTimer: ReturnType<typeof setTimeout> | null = null;
   /** The child a parent session is editing. `null` means "my own plan". */
   private activeChildId: number | null = null;
+  /**
+   * Keys whose plan has been reconciled with the service in this session.
+   *
+   * Signing in on a new device starts with nothing in local storage, and an empty plan saved before
+   * the service has answered would be pushed up and overwrite the real one. Nothing leaves this
+   * device for a plan that has not been read back first.
+   */
+  private readonly syncedKeys = new Set<string>();
 
   /**
    * The active homework data, loaded from local storage on first use.
@@ -67,14 +78,14 @@ class HomeworkManager {
    * Reloading whenever the key changes keeps one account's plan from being written over another's.
    */
   public get(): HomeworkData {
-    if (this.data == null || this.loadedKey !== getStorageKey()) {
+    if (this.data == null || this.loadedKey !== getStorageKey(this.activeChildId)) {
       this.load();
     }
     return this.data!;
   }
 
   public load(): void {
-    const key = getStorageKey();
+    const key = getStorageKey(this.activeChildId);
     const raw = localStorage.getItem(key);
     this.loadedKey = key;
 
@@ -89,8 +100,13 @@ class HomeworkManager {
     // account there is nobody to credit it, and a plan with nothing in it is a locked door.
     if (!isSignedIn()) {
       this.data.earn(WELCOME_STAMINA, "welcome");
+      this.save();
+      return;
     }
-    this.save();
+    // Signed in with nothing stored here, this empty plan is a placeholder until the service
+    // answers. Saving it would schedule a push, and that push would overwrite the real plan with
+    // nothing - which is exactly what a first sign-in on a new device looks like.
+    this.saveLocalOnly();
   }
 
   public save(): void {
@@ -128,14 +144,21 @@ class HomeworkManager {
     if (!isSignedIn() || this.data == null) {
       return;
     }
+    // Nothing is sent for a plan the service has not been read for yet; see `syncedKeys`.
+    if (!this.syncedKeys.has(this.loadedKey ?? "")) {
+      return;
+    }
     if (this.pushTimer != null) {
       clearTimeout(this.pushTimer);
     }
     const target = this.activeChildId ?? undefined;
-    const payload = JSON.stringify(this.data.toSaveData());
     this.pushTimer = setTimeout(() => {
       this.pushTimer = null;
-      void pushHomework(payload, target);
+      // Read at send time. Capturing it when the timer was set would send the plan as it looked
+      // before the edits that arrived during the wait.
+      if (this.data != null) {
+        void pushHomework(JSON.stringify(this.data.toSaveData()), target);
+      }
     }, PUSH_DELAY_MS);
   }
 
@@ -151,7 +174,7 @@ class HomeworkManager {
       clearTimeout(this.pushTimer);
       this.pushTimer = null;
     }
-    if (!isSignedIn() || this.data == null) {
+    if (!isSignedIn() || this.data == null || !this.syncedKeys.has(this.loadedKey ?? "")) {
       return;
     }
     await pushHomework(JSON.stringify(this.data.toSaveData()), this.activeChildId ?? undefined);
@@ -170,7 +193,12 @@ class HomeworkManager {
    */
   public applyRemote(remote: RemoteHomework): void {
     const data = this.get();
-    if (remote.data && data.tasks.length === 0 && data.ledger.length === 0) {
+    // A parent opening a child's plan wants the child's plan, not whatever this browser last held
+    // for them, so the service copy is taken outright. For one's own plan it is only taken when
+    // there is nothing here to lose, which is the case this exists for: a first sign-in on a device
+    // that has never seen the plan.
+    const takeRemote = this.activeChildId != null || (data.tasks.length === 0 && data.ledger.length === 0);
+    if (remote.data && takeRemote) {
       this.data = HomeworkData.fromSaveData(deobfuscate(remote.data));
     }
     const current = this.get();
@@ -193,6 +221,8 @@ class HomeworkManager {
       return false;
     }
     this.applyRemote(remote);
+    // Reconciled: from here this plan may be sent back up. See `syncedKeys`.
+    this.syncedKeys.add(this.loadedKey ?? getStorageKey(this.activeChildId));
     return true;
   }
 
