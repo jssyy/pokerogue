@@ -821,7 +821,10 @@ export class HomeworkUiHandler extends MessageUiHandler {
     await homeworkManager.flushPush();
     await pokerogueApi.account.logout();
     await updateUserInfo();
-    homeworkManager.invalidate();
+    // Nothing of this account may survive into the next sign-in: the plan, the child a parent was
+    // looking at, and any push still aimed at that child all go with it.
+    homeworkManager.forgetAccount();
+    this.viewingChildName = null;
     globalScene.reset(true, true);
   }
 

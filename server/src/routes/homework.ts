@@ -30,6 +30,11 @@ export function homeworkRoutes(db: Db) {
     if (!asked || asked === "self") {
       return caller.id;
     }
+    // Naming your own account by number is the same request as asking for "self". Refusing it made
+    // a child whose client still held a stale target unable to read their own plan at all.
+    if (Number(asked) === caller.id) {
+      return caller.id;
+    }
     if (caller.role !== "parent") {
       return null;
     }

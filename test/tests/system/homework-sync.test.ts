@@ -19,6 +19,8 @@ let parentAccount = false;
 let remote: RemoteHomework | null = null;
 /** Everything the manager has sent up, in order, as `[payload, accountId]`. */
 let pushes: [string, number | undefined][] = [];
+/** Set by a case that needs to see which account the plan was asked for. */
+let fetchTarget: ((account?: number) => void) | null = null;
 
 vi.mock("#app/account", () => ({
   get loggedInUser() {
@@ -29,7 +31,10 @@ vi.mock("#app/account", () => ({
 vi.mock("#system/family-session", () => ({
   isSignedIn: () => signedIn,
   isParentAccount: () => signedIn && parentAccount,
-  fetchHomework: async () => remote,
+  fetchHomework: async (account?: number) => {
+    fetchTarget?.(account);
+    return remote;
+  },
   pushHomework: async (payload: string, accountId?: number) => {
     pushes.push([payload, accountId]);
     return true;
@@ -69,6 +74,7 @@ beforeEach(async () => {
   parentAccount = false;
   remote = null;
   pushes = [];
+  fetchTarget = null;
   vi.useRealTimers();
   vi.resetModules();
   ({ homeworkManager } = await import("#system/homework-manager"));
@@ -179,6 +185,40 @@ describe("homework sync", () => {
     await vi.waitFor(() => expect(pushes.length).toBeGreaterThan(0), { timeout: 4000 });
     // Every push while a child is being viewed must be addressed to that child, never to the parent.
     expect(pushes.map(([, account]) => account)).toEqual(pushes.map(() => 7));
+  });
+
+  it("does not ask for someone else's plan after a parent signs out and a child signs in", async () => {
+    // The manager lives as long as the page does. A parent looked at child 7 and signed out; the
+    // child who signs in next must ask for their own plan, or the service refuses them and they land
+    // on a planner showing no stamina at all.
+    parentAccount = true;
+    remote = { data: planWith(0, "孩子的作业"), earned: 40 };
+    await homeworkManager.viewChild(7);
+
+    parentAccount = false;
+    remote = { data: null, earned: 80 };
+    let asked: number | undefined = -1;
+    fetchTarget = account => {
+      asked = account;
+    };
+
+    await expect(homeworkManager.sync()).resolves.toBe(true);
+    expect(asked).toBeUndefined();
+    expect(homeworkManager.get().stamina).toBe(80);
+  });
+
+  it("leaves nothing of the previous account behind when signing out", async () => {
+    parentAccount = true;
+    remote = { data: planWith(0, "孩子的作业"), earned: 40 };
+    await homeworkManager.viewChild(7);
+    expect(homeworkManager.viewingChild).toBe(7);
+
+    homeworkManager.forgetAccount();
+    parentAccount = false;
+
+    expect(homeworkManager.viewingChild).toBeNull();
+    // And no push left over aimed at the child the parent had open.
+    await vi.waitFor(() => expect(pushes).toHaveLength(0));
   });
 
   it("carries on with the local plan when the service cannot be reached", async () => {

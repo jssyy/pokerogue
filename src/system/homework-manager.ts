@@ -71,6 +71,18 @@ class HomeworkManager {
   private readonly syncedKeys = new Set<string>();
 
   /**
+   * Whose plan is in play: a child a parent is looking at, or `null` for the account's own.
+   *
+   * Gated on the role rather than trusted from {@linkcode activeChildId} alone. That field outlives
+   * a sign-out - the manager is one object for the life of the page - and a child left pointed at
+   * the account a parent was last viewing asks the service for a plan that is not theirs, is refused,
+   * and lands on a planner showing no stamina at all.
+   */
+  private get target(): number | null {
+    return isParentAccount() ? this.activeChildId : null;
+  }
+
+  /**
    * The active homework data, loaded from local storage on first use.
    *
    * @remarks
@@ -78,14 +90,14 @@ class HomeworkManager {
    * Reloading whenever the key changes keeps one account's plan from being written over another's.
    */
   public get(): HomeworkData {
-    if (this.data == null || this.loadedKey !== getStorageKey(this.activeChildId)) {
+    if (this.data == null || this.loadedKey !== getStorageKey(this.target)) {
       this.load();
     }
     return this.data!;
   }
 
   public load(): void {
-    const key = getStorageKey(this.activeChildId);
+    const key = getStorageKey(this.target);
     const raw = localStorage.getItem(key);
     this.loadedKey = key;
 
@@ -114,7 +126,10 @@ class HomeworkManager {
       return;
     }
     try {
-      localStorage.setItem(this.loadedKey ?? getStorageKey(), obfuscate(JSON.stringify(this.data.toSaveData())));
+      localStorage.setItem(
+        this.loadedKey ?? getStorageKey(this.target),
+        obfuscate(JSON.stringify(this.data.toSaveData())),
+      );
     } catch (err) {
       console.error("Failed to save homework data:\n", err);
     }
@@ -127,7 +142,10 @@ class HomeworkManager {
       return;
     }
     try {
-      localStorage.setItem(this.loadedKey ?? getStorageKey(), obfuscate(JSON.stringify(this.data.toSaveData())));
+      localStorage.setItem(
+        this.loadedKey ?? getStorageKey(this.target),
+        obfuscate(JSON.stringify(this.data.toSaveData())),
+      );
     } catch (err) {
       console.error("Failed to save homework data:\n", err);
     }
@@ -151,7 +169,7 @@ class HomeworkManager {
     if (this.pushTimer != null) {
       clearTimeout(this.pushTimer);
     }
-    const target = this.activeChildId ?? undefined;
+    const target = this.target ?? undefined;
     this.pushTimer = setTimeout(() => {
       this.pushTimer = null;
       // Read at send time. Capturing it when the timer was set would send the plan as it looked
@@ -177,7 +195,7 @@ class HomeworkManager {
     if (!isSignedIn() || this.data == null || !this.syncedKeys.has(this.loadedKey ?? "")) {
       return;
     }
-    await pushHomework(JSON.stringify(this.data.toSaveData()), this.activeChildId ?? undefined);
+    await pushHomework(JSON.stringify(this.data.toSaveData()), this.target ?? undefined);
   }
 
   /**
@@ -197,7 +215,7 @@ class HomeworkManager {
     // for them, so the service copy is taken outright. For one's own plan it is only taken when
     // there is nothing here to lose, which is the case this exists for: a first sign-in on a device
     // that has never seen the plan.
-    const takeRemote = this.activeChildId != null || (data.tasks.length === 0 && data.ledger.length === 0);
+    const takeRemote = this.target != null || (data.tasks.length === 0 && data.ledger.length === 0);
     if (remote.data && takeRemote) {
       this.data = HomeworkData.fromSaveData(deobfuscate(remote.data));
     }
@@ -216,13 +234,13 @@ class HomeworkManager {
     if (!isSignedIn()) {
       return false;
     }
-    const remote = await fetchHomework(this.activeChildId ?? undefined);
+    const remote = await fetchHomework(this.target ?? undefined);
     if (remote == null) {
       return false;
     }
     this.applyRemote(remote);
     // Reconciled: from here this plan may be sent back up. See `syncedKeys`.
-    this.syncedKeys.add(this.loadedKey ?? getStorageKey(this.activeChildId));
+    this.syncedKeys.add(this.loadedKey ?? getStorageKey(this.target));
     return true;
   }
 
@@ -234,7 +252,8 @@ class HomeworkManager {
    * pulls that child's plan rather than showing the previous one.
    */
   public async viewChild(childId: number | null): Promise<boolean> {
-    if (!isParentAccount()) {
+    // Clearing needs no permission - only choosing someone else's plan does.
+    if (childId != null && !isParentAccount()) {
       return false;
     }
     this.activeChildId = childId;
@@ -245,7 +264,7 @@ class HomeworkManager {
 
   /** Which child a parent session is working on, or `null` for one's own plan. */
   public get viewingChild(): number | null {
-    return this.activeChildId;
+    return this.target;
   }
 
   /** Runs a change against the homework data and persists the result. */
@@ -259,6 +278,22 @@ class HomeworkManager {
   public invalidate(): void {
     this.data = null;
     this.loadedKey = null;
+  }
+
+  /**
+   * Forgets everything held for the account that is signing out.
+   *
+   * The manager lives as long as the page does, so without this the next person to sign in inherits
+   * the previous one's plan, the child they were looking at, and a push aimed at that child.
+   */
+  public forgetAccount(): void {
+    if (this.pushTimer != null) {
+      clearTimeout(this.pushTimer);
+      this.pushTimer = null;
+    }
+    this.activeChildId = null;
+    this.syncedKeys.clear();
+    this.invalidate();
   }
 }
 
