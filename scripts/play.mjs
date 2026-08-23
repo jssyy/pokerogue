@@ -49,24 +49,60 @@ async function claim(port, stop, what) {
 await claim(ACCOUNT_PORT, stopAccountService, "账号服务");
 await claim(GAME_PORT, stopViteDevServer, "游戏服务");
 
-const children = [];
+const children = new Set();
 
+/** How long to wait before bringing a half back, and how often that may happen before giving up. */
+const RESTART_DELAY_MS = 1000;
+const RESTART_WINDOW_MS = 60_000;
+const MAX_RESTARTS = 5;
+
+/**
+ * Starts one half and keeps it running.
+ *
+ * A half that dies used to take the other with it. That is tidy for a build script and wrong for
+ * something a child is playing on: the account service going down mid-run is what produced
+ * "服务器连接失败" and lost the run. It comes back on its own instead. Something that dies over and
+ * over is a real fault rather than a hiccup, so after {@link MAX_RESTARTS} in a minute it stops and
+ * says so rather than looping silently.
+ */
 function start(command, args, label, tint) {
-  // No shell: `shell: true` concatenates arguments instead of escaping them, and Node warns about
-  // it. Running Vite's own entry point through this Node keeps it to one process either way.
-  const child = spawn(command, args, { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] });
-  pipe(child.stdout, label, tint);
-  pipe(child.stderr, label, tint);
-  child.on("exit", code => {
-    console.log(`${tint}[${label}]${colour.off} 退出了（代码 ${code}）`);
-    shutdown(code ?? 0);
-  });
-  children.push(child);
-  return child;
+  const restarts = [];
+
+  const launch = () => {
+    // No shell: `shell: true` concatenates arguments instead of escaping them, and Node warns about
+    // it. Running Vite's own entry point through this Node keeps it to one process either way.
+    const child = spawn(command, args, { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] });
+    pipe(child.stdout, label, tint);
+    pipe(child.stderr, label, tint);
+    children.add(child);
+
+    child.on("exit", code => {
+      children.delete(child);
+      if (closing) {
+        return;
+      }
+
+      const now = Date.now();
+      while (restarts.length > 0 && now - restarts[0] > RESTART_WINDOW_MS) {
+        restarts.shift();
+      }
+      if (restarts.length >= MAX_RESTARTS) {
+        console.error(`${tint}[${label}]${colour.off} 反复退出（代码 ${code}），不再重启。上面的日志是原因。`);
+        shutdown(code ?? 1);
+        return;
+      }
+
+      restarts.push(now);
+      console.log(`${tint}[${label}]${colour.off} 退出了（代码 ${code}），正在重启…`);
+      setTimeout(launch, RESTART_DELAY_MS);
+    });
+  };
+
+  launch();
 }
 
 let closing = false;
-/** Takes the other half down too: half a stack running is the state that causes confusing failures. */
+/** Stops everything, on Ctrl+C or when one half turns out to be genuinely broken. */
 function shutdown(code) {
   if (closing) {
     return;
