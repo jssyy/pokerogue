@@ -4,7 +4,7 @@ import "#app/i18n"; // Initializes i18n on import
 
 import { initPixelPerfectScaling } from "#app/display-scaling";
 import { InvertPostFX } from "#app/pipelines/invert";
-import { preventDoubleTapZoom } from "#app/touch-controls";
+import { isMobile, preventDoubleTapZoom } from "#app/touch-controls";
 import { isBeta, isDev } from "#constants/app-constants";
 import { version } from "#package.json";
 import { installBugLog } from "#system/bug-log";
@@ -81,7 +81,7 @@ async function startGame(): Promise<void> {
     scene: [LoadingScene, BattleScene],
     version,
   });
-  game.sound.pauseOnBlur = false;
+  game.sound.pauseOnBlur = isMobile();
   initPixelPerfectScaling(game);
 }
 

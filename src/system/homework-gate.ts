@@ -43,7 +43,7 @@ export function isHomeworkHomeScreen(): boolean {
 function announce(message: string): void {
   const { ui } = globalScene;
   const planner = ui.handlers[UiMode.HOMEWORK] as { showText?: (text: string, delay?: number) => void } | undefined;
-  const plannerVisible = ui.getMode() === UiMode.HOMEWORK || ui.getModeChain().includes(UiMode.HOMEWORK);
+  const plannerVisible = ui.mode === UiMode.HOMEWORK || ui.modeChain.includes(UiMode.HOMEWORK);
 
   if (plannerVisible && typeof planner?.showText === "function") {
     planner.showText(message, 0);

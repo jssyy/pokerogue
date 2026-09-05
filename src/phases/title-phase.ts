@@ -248,7 +248,7 @@ export class TitlePhase extends Phase {
    */
   private leaveTitleScreen(): void {
     const { ui } = globalScene;
-    for (const mode of ui.getModeChain()) {
+    for (const mode of ui.modeChain) {
       ui.handlers[mode]?.clear();
     }
     ui.setMode(UiMode.MESSAGE);
@@ -265,7 +265,7 @@ export class TitlePhase extends Phase {
    * the planner displaying a stale plan. Stepping through the message mode forces a fresh build.
    */
   private async showHomeworkHome(options: OptionSelectItem[]): Promise<void> {
-    if (globalScene.ui.getMode() === UiMode.HOMEWORK) {
+    if (globalScene.ui.mode === UiMode.HOMEWORK) {
       await globalScene.ui.setMode(UiMode.MESSAGE);
     }
     await globalScene.ui.setMode(UiMode.HOMEWORK, { playOptions: options });
