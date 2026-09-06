@@ -1,6 +1,6 @@
 """Builds guide-dex.html and guide-items.html from data pulled out of the running game.
 
-    python scripts/build-guide-pages.py <dir-holding-dex.json-and-extra.json>
+    python scripts/build_guide_pages.py <dir-holding-dex.json-and-extra.json>
 
 Those two files are dumped from the game itself - see "Regenerating the guide pages" in
 docs/homework-quest.md for the snippet. Reading the running game rather than parsing the source

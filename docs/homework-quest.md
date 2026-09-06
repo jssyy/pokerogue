@@ -177,7 +177,7 @@ copy(JSON.stringify({ icons, items }));        // 存成 extra.json
 把两个文件放同一个目录，然后：
 
 ```bash
-python scripts/build-guide-pages.py <那个目录>
+python scripts/build_guide_pages.py <那个目录>
 ```
 
 会就地覆盖 `guide-dex.html` 和 `guide-items.html`。`guide.html` 是手写的，不由脚本生成。

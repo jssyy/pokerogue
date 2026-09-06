@@ -36,3 +36,5 @@ ignore:
    - .devcontainer
    - "LICENSES"
    - .idea
+   # Claude Code's own directory. Not project source, and its layout is not ours to name.
+   - .claude
