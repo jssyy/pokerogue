@@ -9,6 +9,7 @@ import { Button } from "#enums/buttons";
 import { GameDataType } from "#enums/game-data-type";
 import { TextStyle } from "#enums/text-style";
 import { UiMode } from "#enums/ui-mode";
+import { GUIDE_URL } from "#system/homework-config";
 import type { OptionSelectConfig, OptionSelectItem } from "#types/ui-types";
 import type { AwaitableUiHandler } from "#ui/awaitable-ui-handler";
 import { BgmBar } from "#ui/bgm-bar";
@@ -28,6 +29,8 @@ enum MenuOptions {
   EGG_LIST,
   EGG_GACHA,
   POKEDEX,
+  HOMEWORK,
+  GUIDE,
   MANAGE_DATA,
   COMMUNITY,
   SAVE_AND_QUIT,
@@ -35,6 +38,9 @@ enum MenuOptions {
 }
 
 let wikiUrl = "https://wiki.pokerogue.net/start";
+/** Gap between the menu window's edge and the first row of text. */
+const MENU_PADDING = 6;
+
 const discordUrl = "https://discord.gg/pokerogue";
 const githubUrl = "https://github.com/pagefaultgames/pokerogue";
 const redditUrl = "https://www.reddit.com/r/pokerogue";
@@ -53,6 +59,8 @@ export class MenuUiHandler extends MessageUiHandler {
   protected optionSelectText: Phaser.GameObjects.Text;
 
   private cursorObj: Phaser.GameObjects.Image | null;
+  /** Distance from one menu row to the next, in canvas units. Measured, not assumed - see `setup`. */
+  private rowHeight: number;
 
   private excludedMenus: () => ConditionalMenu[];
   private menuOptions: MenuOptions[];
@@ -68,12 +76,12 @@ export class MenuUiHandler extends MessageUiHandler {
 
   public bgmBar: BgmBar;
 
-  constructor(mode: UiMode | null = null) {
-    super(mode);
+  constructor() {
+    super();
 
     this.excludedMenus = () => [
       {
-        condition: [UiMode.COMMAND, UiMode.TITLE].includes(mode ?? UiMode.TITLE),
+        condition: true, // overridden later in `.render()`
         options: [MenuOptions.EGG_GACHA, MenuOptions.EGG_LIST],
       },
       { condition: bypassLogin, options: [MenuOptions.LOG_OUT] },
@@ -140,13 +148,38 @@ export class MenuUiHandler extends MessageUiHandler {
     this.optionSelectText = addTextObject(
       0,
       0,
-      this.menuOptions.map(o => `${i18next.t(`menuUiHandler:${toCamelCase(MenuOptions[o])}`)}`).join("\n"),
+      this.menuOptions
+        .map(o =>
+          // These two ship their own strings rather than living in the locale submodule.
+          o === MenuOptions.HOMEWORK
+            ? i18next.t("homework:name")
+            : o === MenuOptions.GUIDE
+              ? i18next.t("homework:guide.menu")
+              : `${i18next.t(`menuUiHandler:${toCamelCase(MenuOptions[o])}`)}`,
+        )
+        .join("\n"),
       TextStyle.WINDOW,
       { maxLines: this.menuOptions.length },
     );
     this.optionSelectText.setLineSpacing(12);
 
     this.scale = getTextStyleOptions(TextStyle.WINDOW).scale;
+
+    // The window is as tall as the screen, so a long enough list simply runs off the bottom - which
+    // is what happened once the menu passed ten entries. Shrink the block to fit rather than letting
+    // the last option fall off the edge.
+    // The window itself is two short of the stage, and the text is inset by the padding twice over.
+    const room = globalScene.scaledCanvas.height - 2 - MENU_PADDING * 2;
+    if (this.optionSelectText.displayHeight > room) {
+      this.scale *= room / this.optionSelectText.displayHeight;
+      this.optionSelectText.setScale(this.scale);
+    }
+    // Phaser takes a line's height from the font's own metrics, so the 96 point size the style asks
+    // for is not the distance between two rows. Measuring it is what keeps the cursor on its row:
+    // stepping by the point size instead drifts a couple of pixels per row, which by the bottom of a
+    // list this long is most of a row.
+    this.rowHeight = this.optionSelectText.displayHeight / this.menuOptions.length;
+
     this.menuBg = addWindow(
       globalScene.scaledCanvas.width - (this.optionSelectText.displayWidth + 25),
       0,
@@ -155,7 +188,7 @@ export class MenuUiHandler extends MessageUiHandler {
     );
     this.menuBg.setOrigin(0, 0);
 
-    this.optionSelectText.setPositionRelative(this.menuBg, 10 + 24 * this.scale, 6);
+    this.optionSelectText.setPositionRelative(this.menuBg, 10 + 24 * this.scale, MENU_PADDING);
 
     this.menuContainer.add(this.menuBg);
 
@@ -606,6 +639,14 @@ export class MenuUiHandler extends MessageUiHandler {
           ui.setOverlayMode(UiMode.POKEDEX);
           success = true;
           break;
+        case MenuOptions.HOMEWORK:
+          ui.setOverlayMode(UiMode.HOMEWORK);
+          success = true;
+          break;
+        case MenuOptions.GUIDE:
+          window.open(GUIDE_URL, "_blank")?.focus();
+          success = true;
+          break;
         case MenuOptions.MANAGE_DATA:
           if (
             !bypassLogin
@@ -809,7 +850,13 @@ export class MenuUiHandler extends MessageUiHandler {
     }
 
     this.cursorObj.setScale(this.scale * 6);
-    this.cursorObj.setPositionRelative(this.menuBg, 7, 6 + (18 + this.cursor * 96) * this.scale);
+    // Centred on its row, so it tracks the text at whatever scale the list ended up at.
+    const cursorHeight = this.cursorObj.displayHeight;
+    this.cursorObj.setPositionRelative(
+      this.menuBg,
+      7,
+      MENU_PADDING + this.cursor * this.rowHeight + (this.rowHeight - cursorHeight) / 2,
+    );
 
     return ret;
   }

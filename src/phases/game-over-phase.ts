@@ -271,14 +271,20 @@ export class GameOverPhase extends BattlePhase {
           clientSessionId,
         })
         .then(success => doGameOver(!globalScene.gameMode.isDaily || !!success))
-        .catch(_err => {
-          globalScene.phaseManager.clearPhaseQueue();
-          globalScene.phaseManager.unshiftNew("MessagePhase", i18next.t("menu:serverCommunicationFailed"), 2500);
-          // force the game to reload after 2 seconds.
-          setTimeout(() => {
-            window.location.reload();
-          }, 2000);
-          this.end();
+        .catch(err => {
+          // Upstream reloads the page here. That is right for a service that is meant to be up: a
+          // failure means something is wrong and a fresh start is the safest answer. A family server
+          // is a computer at home - it sleeps, it gets restarted, someone closes the terminal - and
+          // reloading takes the run the child just finished away along with the results screen.
+          //
+          // So the run ends the way it would have with no server at all. The only thing lost is the
+          // daily-run clear being recorded, and nobody in one family is racing a leaderboard.
+          console.warn("Game over could not be recorded with the server; keeping the local result.\n", err);
+          if (this.isVictory) {
+            globalScene.gameData.offlineNewClear().then(result => doGameOver(result));
+          } else {
+            doGameOver(false);
+          }
         });
     } else if (this.isVictory) {
       globalScene.gameData.offlineNewClear().then(result => {

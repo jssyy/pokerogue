@@ -16,6 +16,7 @@ import { initModifierTypes } from "#modifiers/modifier-type";
 import { initMoves } from "#moves/move";
 import { initMysteryEncounters } from "#mystery-encounters/mystery-encounter-biomes";
 import { initAchievements } from "#system/achv";
+import { initHomeworkLocales } from "#system/homework-locales";
 import { initVouchers } from "#system/voucher";
 import { initStatsKeys } from "#ui/game-stats-ui-handler";
 
@@ -29,6 +30,7 @@ export async function initializeGame(): Promise<void> {
   initModifierPools();
   initAchievements();
   initVouchers();
+  initHomeworkLocales();
   initStatsKeys();
   initBiomes();
   initCatchableSpecies();

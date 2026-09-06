@@ -2,10 +2,12 @@ import "#app/polyfills"; // All polyfills MUST be loaded first for side effects
 import "#init/init-manifest"; // initializes the manifest, must be done *before* i18n is initialized due to being used for caching
 import "#app/i18n"; // Initializes i18n on import
 
+import { initPixelPerfectScaling } from "#app/display-scaling";
 import { InvertPostFX } from "#app/pipelines/invert";
-import { preventDoubleTapZoom } from "#app/touch-controls";
+import { isMobile, preventDoubleTapZoom } from "#app/touch-controls";
 import { isBeta, isDev } from "#constants/app-constants";
 import { version } from "#package.json";
+import { installBugLog } from "#system/bug-log";
 import Phaser from "phaser";
 import BBCodeTextPlugin from "phaser3-rex-plugins/plugins/bbcodetext-plugin";
 import InputTextPlugin from "phaser3-rex-plugins/plugins/inputtext-plugin";
@@ -21,6 +23,9 @@ preventDoubleTapZoom();
 async function startGame(): Promise<void> {
   const LoadingScene = (await import("./loading-scene")).LoadingScene;
   const BattleScene = (await import("./battle-scene")).BattleScene;
+  // Before anything else, so a failure during boot still leaves a trail.
+  installBugLog();
+
   const game = new Phaser.Game({
     type: Phaser.WEBGL,
     parent: "app",
@@ -67,12 +72,17 @@ async function startGame(): Promise<void> {
     dom: {
       createContainer: true,
     },
+    // `pixelArt` bundles nearest-neighbour texture sampling with `roundPixels`. Without the latter,
+    // sprites land on half pixels and their art pixels come out uneven widths, which reads as a
+    // soft, slightly smeared sprite next to the crisp UI text.
+    pixelArt: true,
     antialias: false,
     pipeline: [InvertPostFX] as unknown as Phaser.Types.Core.PipelineConfig,
     scene: [LoadingScene, BattleScene],
     version,
   });
-  game.sound.pauseOnBlur = false;
+  game.sound.pauseOnBlur = isMobile();
+  initPixelPerfectScaling(game);
 }
 
 try {

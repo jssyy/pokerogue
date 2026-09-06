@@ -7,14 +7,13 @@ import { Stat } from "#enums/stat";
 import type { PlayerPokemon } from "#field/pokemon";
 import type { BattleInfoParamList } from "#ui/battle-info";
 import { BattleInfo } from "#ui/battle-info";
-import { getLocalizedSpriteKey } from "#utils/common";
 
 const EXP_BAR_WIDTH = 510;
 
 export class PlayerBattleInfo extends BattleInfo {
   protected player: true = true;
   protected hpNumbersContainer: Phaser.GameObjects.Container;
-  protected expBarLabel: Phaser.GameObjects.Image;
+  protected expBarLabel: Phaser.GameObjects.Text;
 
   override get statOrder(): Stat[] {
     return [Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.ACC, Stat.EVA, Stat.SPD];
@@ -52,10 +51,7 @@ export class PlayerBattleInfo extends BattleInfo {
     // hp number container must be beneath the stat container for overlay to display properly
     this.addAt(this.hpNumbersContainer, this.getIndex(this.statsContainer));
 
-    const expBarLabel = globalScene.add
-      .image(-91, 20, getLocalizedSpriteKey("overlay_exp_label"))
-      .setName("overlay_exp_label")
-      .setOrigin(1, 1);
+    const expBarLabel = this.makeExpCaption(-91, 20).setName("overlay_exp_label");
     this.add(expBarLabel);
 
     const expBar = globalScene.add.image(-98, 18, "overlay_exp").setName("overlay_exp").setOrigin(0);
@@ -247,16 +243,8 @@ export class PlayerBattleInfo extends BattleInfo {
       return;
     }
     this.hpNumbersContainer.removeAll(true);
-    const hpStr = hp.toString();
-    const maxHpStr = maxHp.toString();
-    let offset = 0;
-    for (let i = maxHpStr.length - 1; i >= 0; i--) {
-      this.hpNumbersContainer.add(globalScene.add.image(offset++ * -8, 0, "numbers", maxHpStr[i]));
-    }
-    this.hpNumbersContainer.add(globalScene.add.image(offset++ * -8, 0, "numbers", "/"));
-    for (let i = hpStr.length - 1; i >= 0; i--) {
-      this.hpNumbersContainer.add(globalScene.add.image(offset++ * -8, 0, "numbers", hpStr[i]));
-    }
+    // Anchored at its right end, under the end of the health bar, and grows leftwards as HP totals do.
+    this.hpNumbersContainer.add(this.makeReadout(`${hp}/${maxHp}`, 1));
   }
 
   /**

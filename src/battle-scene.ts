@@ -69,7 +69,7 @@ import { ArenaBase } from "#field/arena-base";
 import { DamageNumberHandler } from "#field/damage-number-handler";
 import type { Pokemon } from "#field/pokemon";
 import { EnemyPokemon, PlayerPokemon } from "#field/pokemon";
-import { PokemonSpriteSparkleHandler } from "#field/pokemon-sprite-sparkle-handler";
+import { PokemonSpriteTeraSparkleHandler } from "#field/pokemon-sprite-tera-sparkle-handler";
 import { Trainer } from "#field/trainer";
 import type { Modifier, ModifierPredicate, TurnHeldItemTransferModifier } from "#modifiers/modifier";
 import {
@@ -133,7 +133,7 @@ import { CharSprite } from "#ui/char-sprite";
 import { PartyExpBar } from "#ui/party-exp-bar";
 import { PokeballTray } from "#ui/pokeball-tray";
 import { PokemonInfoContainer } from "#ui/pokemon-info-container";
-import { addTextObject, getTextColor, RAINBOW_TINT } from "#ui/text";
+import { addTextObject, getTextColor, RAINBOW_TINT, SYSTEM_UI_FONT } from "#ui/text";
 import { UI } from "#ui/ui";
 import { addUiThemeOverrides, updateWindowType } from "#ui/ui-theme";
 import { playTween } from "#utils/anim-utils";
@@ -266,7 +266,7 @@ export class BattleScene extends SceneBase {
   public offsetGym = false;
 
   public damageNumberHandler: DamageNumberHandler;
-  private spriteSparkleHandler: PokemonSpriteSparkleHandler;
+  private spriteTeraSparkleHandler: PokemonSpriteTeraSparkleHandler;
 
   public fieldSpritePipeline: FieldSpritePipeline;
   public spritePipeline: SpritePipeline;
@@ -377,6 +377,7 @@ export class BattleScene extends SceneBase {
     const defaultMoves = [MoveId.TACKLE, MoveId.TAIL_WHIP, MoveId.FOCUS_ENERGY, MoveId.STRUGGLE];
 
     await Promise.all([
+      this.initExpSprites(),
       this.initVariantData(),
       initCommonAnims().then(() => loadCommonAnimAssets(true)),
       Promise.all(defaultMoves.map(m => initMoveAnim(m))).then(() => loadMoveAnimAssets(defaultMoves, true)),
@@ -524,10 +525,27 @@ export class BattleScene extends SceneBase {
       .setName("candy-bar")
       .setup();
 
-    this.biomeWaveText = addTextObject(this.scaledCanvas.width - 2, 0, STARTING_WAVE.toString(), TextStyle.BATTLE_INFO)
+    // The biome name already comes from an outline face; the wave number and the money beside it are
+    // digits, which the pixel font still draws on its 16x16 grid. Both hang off the right edge with
+    // open sky to their left, so giving them the same face costs nothing in layout.
+    //
+    // Both are sized down from the style's default, because naming the face here bypasses the 81%
+    // adjustment `initFonts` applies when it lends the system face to the pixel family. 58 keeps the
+    // biome name exactly the size it was; the money, being all figures, matches the pixel font's
+    // digits at 44.
+    this.biomeWaveText = addTextObject(
+      this.scaledCanvas.width - 2,
+      0,
+      STARTING_WAVE.toString(),
+      TextStyle.BATTLE_INFO,
+      { fontFamily: SYSTEM_UI_FONT, fontSize: 58 },
+    )
       .setName("text-biome-wave")
       .setOrigin(1, 0.5);
-    this.moneyText = addTextObject(this.scaledCanvas.width - 2, 0, "", TextStyle.MONEY)
+    this.moneyText = addTextObject(this.scaledCanvas.width - 2, 0, "", TextStyle.MONEY, {
+      fontFamily: SYSTEM_UI_FONT,
+      fontSize: 44,
+    })
       .setName("text-money")
       .setOrigin(1, 0.5);
 
@@ -557,7 +575,7 @@ export class BattleScene extends SceneBase {
     this.updateUIPositions();
 
     this.damageNumberHandler = new DamageNumberHandler();
-    this.spriteSparkleHandler = new PokemonSpriteSparkleHandler() //
+    this.spriteTeraSparkleHandler = new PokemonSpriteTeraSparkleHandler() //
       .setup();
 
     this.fieldUI
@@ -2073,7 +2091,7 @@ export class BattleScene extends SceneBase {
       teraColor: pokemon ? getTypeRgb(pokemon.getTeraType()) : undefined,
       isTerastallized: pokemon ? pokemon.isTerastallized : false,
     });
-    this.spriteSparkleHandler.add(sprite);
+    this.spriteTeraSparkleHandler.add(sprite);
     return sprite;
   }
 

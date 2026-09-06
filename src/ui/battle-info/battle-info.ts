@@ -8,10 +8,45 @@ import { StatusEffect } from "#enums/status-effect";
 import { TextStyle } from "#enums/text-style";
 import type { Pokemon } from "#field/pokemon";
 import { getVariantTint } from "#sprites/variant";
-import { addTextObject } from "#ui/text";
+import { addTextObject, SYSTEM_UI_FONT } from "#ui/text";
 import { fixedInt, getLocalizedSpriteKey, getShinyDescriptor } from "#utils/common";
 import { getPokemonTypeLocaleKey } from "#utils/i18n";
 import i18next from "i18next";
+
+/**
+ * Point size for a digit in the level and HP readouts.
+ *
+ * Picked by measurement rather than by eye: at this size a digit's ink ends on art row 9.67, which is
+ * exactly where the white of the neighbouring `Lv.` sprite ends, so the two share a baseline.
+ */
+const READOUT_DIGIT_FONT_SIZE = 56;
+
+/** Width of one cell on the grid the `numbers` sprites used, still the unit the box is sized in. */
+const READOUT_CELL_WIDTH = 8;
+
+/**
+ * The `Lv.`, `HP` and `EXP` captions, restated as type rather than as 7 pixel tall images.
+ *
+ * `size` is the point size at which the glyphs stand as tall as the coloured body of the sprite each
+ * one replaces, and `colour` is sampled straight from that sprite, so only the letterforms change.
+ * All three are right-aligned and grow leftwards, and every one of them is narrower set as text than
+ * it was as art - `HP` by a quarter, `EXP` by half - so nothing can be pushed into.
+ */
+const CAPTIONS = {
+  level: { text: "Lv.", size: 42, colour: "#ffffff" },
+  hp: { text: "HP", size: 42, colour: "#39ff7b" },
+  hpBoss: { text: "BOSS", size: 42, colour: "#f35c2a" },
+  exp: { text: "EXP", size: 28, colour: "#00baf3" },
+} as const;
+
+/** Thickness of the dark keyline, standing in for the outline the sprites carried. */
+const CAPTION_STROKE = 8;
+
+/** The colours the `numbers` and `numbers_red` sprites were drawn in, so no palette changes. */
+const READOUT_COLOURS = {
+  normal: { fill: "#ffffff", shadow: "#827586" },
+  boosted: { fill: "#e85038", shadow: "#ab2b22" },
+} as const;
 
 /**
  * Parameters influencing the position of elements within the battle info container
@@ -68,7 +103,7 @@ export abstract class BattleInfo extends Phaser.GameObjects.Container {
   protected splicedIcon: Phaser.GameObjects.Sprite;
   protected statusIndicator: Phaser.GameObjects.Sprite;
   protected levelContainer: Phaser.GameObjects.Container;
-  protected hpLabel: Phaser.GameObjects.Image;
+  protected hpLabel: Phaser.GameObjects.Text;
   protected hpBar: Phaser.GameObjects.Image;
   protected levelNumbersContainer: Phaser.GameObjects.Container;
   protected type1Icon: Phaser.GameObjects.Sprite;
@@ -253,15 +288,15 @@ export abstract class BattleInfo extends Phaser.GameObjects.Container {
       .setName("container_level");
     this.add(this.levelContainer);
 
-    const levelOverlay = globalScene.add.image(5.5, 0, getLocalizedSpriteKey("overlay_lv")).setOrigin(1, 0.5);
-    this.levelContainer.add(levelOverlay);
+    this.levelContainer.add(this.makeCaption(5.5, 0, CAPTIONS.level, 1, 0.5));
 
     this.hpBar = globalScene.add.image(posParams.hpBarX, posParams.hpBarY, "overlay_hp").setName("hp_bar").setOrigin(0);
     this.add(this.hpBar);
 
-    this.hpLabel = globalScene.add
-      .image(posParams.hpBarX - 1, posParams.hpBarY - 3, getLocalizedSpriteKey("overlay_hp_label"))
-      .setOrigin(1, 0);
+    // Centred on the bar rather than hung from a top edge: a text object's box carries leading the
+    // 7 pixel sprite did not, which dropped the caption's ink about a pixel and a half onto the bar.
+    // Measured against the green fill, this puts it back where the art had it.
+    this.hpLabel = this.makeCaption(posParams.hpBarX - 1, posParams.hpBarY + 1, CAPTIONS.hp, 1, 0.5);
     this.add(this.hpLabel);
 
     this.levelNumbersContainer = globalScene.add
@@ -651,23 +686,81 @@ export abstract class BattleInfo extends Phaser.GameObjects.Container {
   }
 
   /**
+   * One of the small captions from {@linkcode CAPTIONS}, drawn where its sprite used to sit.
+   *
+   * The dark keyline matters as much as the letterforms here: the sprites carried a one pixel outline
+   * that is what makes green `HP` legible over a white bar, and a shadow alone does not replace it.
+   */
+  protected makeCaption(
+    x: number,
+    y: number,
+    caption: (typeof CAPTIONS)[keyof typeof CAPTIONS],
+    originX: number,
+    originY: number,
+  ): Phaser.GameObjects.Text {
+    return addTextObject(x, y, caption.text, TextStyle.BATTLE_INFO, {
+      fontFamily: SYSTEM_UI_FONT,
+      fontSize: caption.size,
+      color: caption.colour,
+    })
+      .setOrigin(originX, originY)
+      .setStroke("#212121", CAPTION_STROKE)
+      .setShadow(0, 0, "#00000000", 0);
+  }
+
+  /** Swaps the health caption between `HP` and the wider `BOSS` one a boss encounter puts there. */
+  protected setHpCaption(boss: boolean): void {
+    const caption = boss ? CAPTIONS.hpBoss : CAPTIONS.hp;
+    this.hpLabel.setText(caption.text).setColor(caption.colour);
+  }
+
+  /** The `EXP` caption, which only the player's box carries; kept here so {@linkcode CAPTIONS} can stay private. */
+  protected makeExpCaption(x: number, y: number): Phaser.GameObjects.Text {
+    return this.makeCaption(x, y, CAPTIONS.exp, 1, 1);
+  }
+
+  /**
+   * A level or HP readout, set as one run of text.
+   *
+   * The sprites it replaces sat on a fixed 8 pixel grid because every frame was 8 wide. An outline
+   * face draws a digit at about five and a half, so keeping that grid would leave the string visibly
+   * gappy; letting the font space itself keeps the old density.
+   *
+   * @param text - The digits, including the `/` that separates current HP from maximum
+   * @param originX - 0 to grow rightwards from the anchor, 1 to grow leftwards
+   * @param boosted - Whether to use the red palette the game reserves for a capped level
+   */
+  protected makeReadout(text: string, originX: 0 | 1, boosted = false): Phaser.GameObjects.Text {
+    const { fill, shadow } = boosted ? READOUT_COLOURS.boosted : READOUT_COLOURS.normal;
+    return addTextObject(0, 0, text, TextStyle.BATTLE_INFO, {
+      fontFamily: SYSTEM_UI_FONT,
+      fontSize: READOUT_DIGIT_FONT_SIZE,
+      color: fill,
+    })
+      .setOrigin(originX, 0.5)
+      .setShadow(3.5, 3.5, shadow);
+  }
+
+  /**
    * Set the level numbers container to display the provided level
    *
    * @remarks
-   * The numbers in the pokemon's level uses images for each number rather than a text object with a special font.
-   * This method sets the images for each digit of the level number and then positions the level container based
-   * on the number of digits.
+   * Each digit is its own text object, centred in the same 8 pixel cell the `numbers` sprites used to
+   * occupy, so the surrounding layout and the multi-digit shift below are untouched. They are drawn
+   * from an outline face rather than the pixel font: at this size the 8x8 sprites resolve finer than
+   * `emerald` does, so the only way to gain detail rather than lose it is to leave the grid behind.
    *
    * @param level - The level to display
-   * @param textureKey - The texture key for the level numbers
+   * @param textureKey - Which palette to use; `numbers_red` marks a level the game has boosted
    */
   public setLevelDisplay(level: number, textureKey: "numbers" | "numbers_red" = "numbers"): void {
     this.levelNumbersContainer.removeAll(true);
-    const levelStr = level.toString();
-    for (let i = 0; i < levelStr.length; i++) {
-      this.levelNumbersContainer.add(globalScene.add.image(i * 8, 0, textureKey, levelStr[i]));
-    }
-    this.levelContainer.setX(this.baseLvContainerX - 8 * Math.max(levelStr.length - 3, 0));
+    const readout = this.makeReadout(level.toString(), 0, textureKey === "numbers_red");
+    this.levelNumbersContainer.add(readout);
+    // The box only has room for three digits; anything longer pushes the whole level block left, by
+    // however much it actually overruns rather than by a per-digit guess.
+    const room = 3 * READOUT_CELL_WIDTH;
+    this.levelContainer.setX(this.baseLvContainerX - Math.max(readout.displayWidth - room, 0));
   }
 
   updateStats(stats: number[]): void {

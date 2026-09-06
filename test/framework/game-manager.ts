@@ -20,6 +20,7 @@ import { SelectStarterPhase } from "#phases/select-starter-phase";
 import type { SelectTargetPhase } from "#phases/select-target-phase";
 import { TurnEndPhase } from "#phases/turn-end-phase";
 import { GameData } from "#system/game-data";
+import { homeworkManager } from "#system/homework-manager";
 import { GameWrapper } from "#test/framework/game-wrapper";
 import type { InputsHandler } from "#test/framework/inputs-handler";
 import { PhaseInterceptor } from "#test/framework/phase-interceptor";
@@ -139,6 +140,9 @@ export class GameManager {
   private initDefaultOverrides(): void {
     // Disables Mystery Encounters on all tests (can be overridden at test level)
     this.override.mysteryEncounterChance(0);
+    // Runs in tests are not funded by homework, so the stamina gate would stall any test that walks
+    // past a toll wave. Tests that exercise the gate turn it back on themselves.
+    homeworkManager.get().gateEnabled = false;
   }
 
   /**
@@ -156,7 +160,7 @@ export class GameManager {
    */
   // TODO: This is unused
   async waitMode(mode: UiMode): Promise<void> {
-    await vi.waitUntil(() => this.scene.ui?.getMode() === mode);
+    await vi.waitUntil(() => this.scene.ui?.mode === mode);
   }
 
   /**
@@ -413,7 +417,7 @@ export class GameManager {
    * @returns Whether the current mode matches the target mode.
    */
   isCurrentMode(mode: UiMode): boolean {
-    return this.scene.ui.getMode() === mode;
+    return this.scene.ui.mode === mode;
   }
 
   /**
@@ -443,7 +447,7 @@ export class GameManager {
     const valid = !!systemData.dexData && !!systemData.timestamp;
     if (valid) {
       await updateUserInfo();
-      await this.scene.gameData.initSystem(dataStr);
+      await this.scene.gameData["initSystem"](dataStr);
     }
     return updateUserInfo();
   }

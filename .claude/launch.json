@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pokerogue-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["start:dev"],
+      "port": 8000
+    },
+    {
+      "name": "pokerogue-built",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["preview", "--port", "8001"],
+      "port": 8001
+    }
+  ]
+}

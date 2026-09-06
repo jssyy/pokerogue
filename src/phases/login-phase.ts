@@ -93,7 +93,9 @@ export class LoginPhase extends Phase {
     };
 
     if (this.showText) {
-      ui.showText(i18next.t("menu:logInOrCreateAccount"));
+      // Our own line rather than the stock one: this build's accounts are made by a parent on the
+      // management page, so "create an account" is advice a child cannot act on.
+      ui.showText(i18next.t("homework:login.prompt"));
     }
 
     audioManager.playSound("ui/menu_open");

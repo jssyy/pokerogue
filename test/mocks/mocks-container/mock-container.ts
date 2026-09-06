@@ -148,6 +148,10 @@ export class MockContainer implements MockGameObject {
     return { width: this.width, height: this.height };
   }
 
+  getCenter() {
+    return { x: this.x + this.width / 2, y: this.y + this.height / 2 };
+  }
+
   setColor(_color): this {
     // Sets the tint of this Game Object.
     return this;

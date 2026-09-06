@@ -47,4 +47,13 @@ export enum UiMode {
   MYSTERY_ENCOUNTER,
   CHANGE_PASSWORD_FORM,
   ALERT_MODAL,
+  /** The homework planner: the child's plan, stamina balance and the parent-only grading screen. */
+  HOMEWORK,
+  /**
+   * A second option-select mode used only by the homework planner, so that a menu opened from
+   * another menu never reuses the handler instance that is about to clear itself.
+   */
+  HOMEWORK_OPTION_SELECT,
+  HOMEWORK_PIN,
+  HOMEWORK_TASK_FORM,
 }

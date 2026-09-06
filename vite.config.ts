@@ -18,6 +18,14 @@ export const sharedConfig: UserConfigFnPromise = async ({ mode }) => {
       chunkSizeWarningLimit: 10000,
       minify: "oxc",
       rolldownOptions: {
+        // The guide is a second page, so it has to be named here: `appType: "mpa"` changes how the
+        // dev server resolves requests, but the build still starts from whatever inputs it is given.
+        input: {
+          main: "index.html",
+          guide: "guide.html",
+          guideDex: "guide-dex.html",
+          guideItems: "guide-items.html",
+        },
         // TODO: Review if we even need this anymore in v8.0
         onwarn(warning, defaultHandler) {
           // Suppress "Module level directives cause errors when bundled" warnings
@@ -45,14 +53,13 @@ export const sharedConfig: UserConfigFnPromise = async ({ mode }) => {
           keepNames: true,
           // Needed to prevent import timing issues with the phaser3 rex plugins
           strictExecutionOrder: true,
-          minify: {
-            mangle: {
-              keepNames: true,
-            },
-            compress: {
-              keepNames: { class: true, function: true },
-            },
-          },
+          minify:
+            mode === "development"
+              ? "dce-only"
+              : {
+                  mangle: { keepNames: true },
+                  compress: { keepNames: { class: true, function: true } },
+                },
         },
       },
     },
@@ -64,8 +71,8 @@ export const sharedConfig: UserConfigFnPromise = async ({ mode }) => {
 
   if (!process.env.MERGE_REPORTS) {
     opts.plugins = [
-      (await import("./plugins/vite/vite-minify-json-plugin")).minifyPublicJsonFiles(),
-      (await import("./plugins/vite/namespaces-i18n-plugin")).LocaleNamespace(),
+      (await import("./plugins/vite/vite-minify-json-plugin.ts")).minifyPublicJsonFiles(),
+      (await import("./plugins/vite/namespaces-i18n-plugin.ts")).LocaleNamespace(),
       (await import("unplugin-inline-enum/vite")).default({ scanDir: "src" }),
     ];
   }

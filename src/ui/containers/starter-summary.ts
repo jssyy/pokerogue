@@ -24,7 +24,14 @@ import {
   getStarterSelectTextSettings,
 } from "#ui/starter-select-ui-utils";
 import { StatsContainer } from "#ui/stats-container";
-import { addBBCodeTextObject, addTextObject, getTextColor, updateCandyCountTextStyle } from "#ui/text";
+import {
+  addBBCodeTextObject,
+  addTextObject,
+  getTextColor,
+  SYSTEM_UI_FONT,
+  systemFontSize,
+  updateCandyCountTextStyle,
+} from "#ui/text";
 import { argbFromRgba, rgbHexToRgba } from "#utils/color-utils";
 import { getLocalizedSpriteKey, padInt, truncateString } from "#utils/common";
 import { getPokemonSpeciesForm, getStarterColors } from "#utils/pokemon-utils";
@@ -32,6 +39,25 @@ import { toCamelCase, toTitleCase } from "#utils/strings";
 import i18next from "i18next";
 import type { GameObjects } from "phaser";
 import type BBCodeText from "phaser3-rex-plugins/plugins/bbcodetext";
+
+/**
+ * Drop applied to the move and egg-move labels now that they are set in an outline face.
+ *
+ * The pixel font reports a taller ascent than the system one, and Phaser lays text out from the top
+ * of that line box, so the same `y` sits the glyphs higher than it used to - enough that they touched
+ * the top edge of their bars. Three puts the ink back in the middle: measured against the plates, the
+ * egg-move rows land dead centre and the move rows within a quarter of a pixel.
+ */
+/**
+ * Point sizes at which the system face's figures stand as tall as the pixel font's did.
+ *
+ * Unlike {@linkcode systemFontSize}, which matches Chinese, these are matched on digits, and had to
+ * be measured per readout: the pixel font sets every glyph on one narrow width, so the ratio between
+ * the two faces is not the same for a four digit dex number as it is for a candy tally.
+ */
+const DIGIT_SIZE = { dexNumber: 68, candyCount: 41, tally: 68 } as const;
+
+const MOVE_LABEL_BASELINE_NUDGE = 3;
 
 export class StarterSummary extends Phaser.GameObjects.Container {
   private readonly pokemonSprite: Phaser.GameObjects.Sprite;
@@ -108,7 +134,10 @@ export class StarterSummary extends Phaser.GameObjects.Container {
       .setOrigin(0, 1)
       .setVisible(false); // Pixel text 'No' shiny
 
-    this.pokemonNumberText = addTextObject(41, 1, "0000", TextStyle.SUMMARY_DEX_NUM) //
+    this.pokemonNumberText = addTextObject(41, 1, "0000", TextStyle.SUMMARY_DEX_NUM, {
+      fontFamily: SYSTEM_UI_FONT,
+      fontSize: DIGIT_SIZE.dexNumber,
+    }) //
       .setOrigin(1, 0);
 
     this.pokemonNameText = addTextObject(6, 112, "", TextStyle.SUMMARY) //
@@ -142,7 +171,13 @@ export class StarterSummary extends Phaser.GameObjects.Container {
         .nineslice(0, 0, "type_bgs", "unknown", 92, 14, 2, 2, 2, 2)
         .setOrigin(1, 0);
 
-      const moveLabel = addTextObject(-moveBg.width / 2, 0, "-", TextStyle.MOVE_LABEL) //
+      // An outline face, so the `-` and `???` placeholders and any Latin move name read as cleanly as
+      // the Chinese beside them already does. The size folds in the adjustment that naming the face
+      // directly would otherwise skip, so the Chinese stays exactly the size it was.
+      const moveLabel = addTextObject(-moveBg.width / 2, MOVE_LABEL_BASELINE_NUDGE, "-", TextStyle.MOVE_LABEL, {
+        fontFamily: SYSTEM_UI_FONT,
+        fontSize: systemFontSize(TextStyle.MOVE_LABEL),
+      }) //
         .setOrigin(0.5, 0);
 
       this.pokemonMoveBgs.push(moveBg);
@@ -182,7 +217,10 @@ export class StarterSummary extends Phaser.GameObjects.Container {
         .nineslice(0, 0, "type_bgs", "unknown", 92, 14, 2, 2, 2, 2)
         .setOrigin(1, 0);
 
-      const eggMoveLabel = addTextObject(-eggMoveBg.width / 2, 0, "???", TextStyle.MOVE_LABEL) //
+      const eggMoveLabel = addTextObject(-eggMoveBg.width / 2, MOVE_LABEL_BASELINE_NUDGE, "???", TextStyle.MOVE_LABEL, {
+        fontFamily: SYSTEM_UI_FONT,
+        fontSize: systemFontSize(TextStyle.MOVE_LABEL),
+      }) //
         .setOrigin(0.5, 0);
 
       this.pokemonEggMoveBgs.push(eggMoveBg);
@@ -388,7 +426,10 @@ export class StarterSummary extends Phaser.GameObjects.Container {
       .setTint(0x000000)
       .setAlpha(0.5);
 
-    this.pokemonCandyCountText = addTextObject(9.5, 0, "x0", TextStyle.WINDOW_ALT, { fontSize: "56px" }) //
+    this.pokemonCandyCountText = addTextObject(9.5, 0, "x0", TextStyle.WINDOW_ALT, {
+      fontFamily: SYSTEM_UI_FONT,
+      fontSize: DIGIT_SIZE.candyCount,
+    }) //
       .setOrigin(0);
     this.pokemonCandyContainer.add([
       this.pokemonCandyIcon,
@@ -406,13 +447,19 @@ export class StarterSummary extends Phaser.GameObjects.Container {
       .setOrigin(0)
       .setScale(0.75);
 
-    this.pokemonCaughtCountText = addTextObject(24, 4, "0", TextStyle.WINDOW_ALT) //
+    this.pokemonCaughtCountText = addTextObject(24, 4, "0", TextStyle.WINDOW_ALT, {
+      fontFamily: SYSTEM_UI_FONT,
+      fontSize: DIGIT_SIZE.tally,
+    }) //
       .setOrigin(0);
     this.pokemonHatchedIcon = globalScene.add //
       .sprite(1, 14, "egg_icons")
       .setOrigin(0.15, 0.2)
       .setScale(0.8);
-    this.pokemonHatchedCountText = addTextObject(24, 19, "0", TextStyle.WINDOW_ALT) //
+    this.pokemonHatchedCountText = addTextObject(24, 19, "0", TextStyle.WINDOW_ALT, {
+      fontFamily: SYSTEM_UI_FONT,
+      fontSize: DIGIT_SIZE.tally,
+    }) //
       .setOrigin(0);
     this.pokemonMovesContainer = globalScene.add //
       .container(102, 16)

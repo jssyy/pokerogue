@@ -19,6 +19,8 @@ import { Unlockables } from "#enums/unlockables";
 import { getBiomeKey } from "#field/arena";
 import type { Modifier } from "#modifiers/modifier";
 import { getDailyRunStarterModifiers, regenerateModifierPoolThresholds } from "#modifiers/modifier-type";
+import { canAffordPlay, isHomeworkHomeScreen, showPlayBlockedMessage, tryPayToPlay } from "#system/homework-gate";
+import { playHomeworkIntroOnce } from "#system/homework-intro";
 import { vouchers } from "#system/voucher";
 import type { OptionSelectConfig, OptionSelectItem } from "#types/ui-types";
 import { SaveSlotUiMode } from "#ui/save-slot-select-ui-handler";
@@ -86,6 +88,11 @@ export class TitlePhase extends Phase {
       options.push({
         label: i18next.t("continue", { ns: "menu" }),
         handler: () => {
+          // Returning false keeps the title menu open and plays the error sound, which is what we
+          // want when the child cannot afford to play yet.
+          if (!tryPayToPlay("resumeRun")) {
+            return false;
+          }
           this.loadSaveSlot(lastSessionSlot);
           return true;
         },
@@ -95,10 +102,18 @@ export class TitlePhase extends Phase {
       {
         label: i18next.t("menu:newGame"),
         handler: () => {
+          // Only check here: the run is paid for once a mode has actually been picked, so backing
+          // out of the mode list never costs stamina.
+          if (!canAffordPlay("newRun")) {
+            showPlayBlockedMessage("newRun");
+            return false;
+          }
           const setModeAndEnd = (gameMode: GameModes) => {
+            if (!tryPayToPlay("newRun")) {
+              return;
+            }
             this.gameMode = gameMode;
-            globalScene.ui.setMode(UiMode.MESSAGE);
-            globalScene.ui.clearText();
+            this.leaveTitleScreen();
             this.end();
           };
           const { gameData } = globalScene;
@@ -113,6 +128,9 @@ export class TitlePhase extends Phase {
           options.push({
             label: i18next.t("menu:dailyRun"),
             handler: () => {
+              if (!tryPayToPlay("newRun")) {
+                return false;
+              }
               this.initDailyRun();
               return true;
             },
@@ -167,6 +185,9 @@ export class TitlePhase extends Phase {
               console.warn("Attempted to load save slot of -1 through load game menu!");
               return this.showOptions(slotId);
             }
+            if (!tryPayToPlay("resumeRun")) {
+              return this.showOptions(slotId);
+            }
             this.loadSaveSlot(slotId);
           });
           return true;
@@ -189,6 +210,26 @@ export class TitlePhase extends Phase {
         keepOpen: true,
       },
     );
+    // While homework funds play, the planner is the home screen: the child lands on their plan and
+    // sets out from there, instead of the plan being one entry down a title menu.
+    if (isHomeworkHomeScreen()) {
+      // The cutscene leaves its curtain up so the planner can be built behind it; lifting it only
+      // afterwards means the child never sees the bare title background in between.
+      const liftCurtain = await playHomeworkIntroOnce();
+      await this.showHomeworkHome(options);
+      liftCurtain();
+      return;
+    }
+
+    options.push({
+      label: i18next.t("homework:name"),
+      handler: () => {
+        globalScene.ui.setOverlayMode(UiMode.HOMEWORK);
+        return true;
+      },
+      keepOpen: true,
+    });
+
     const config: OptionSelectConfig = {
       options,
       noCancel: true,
@@ -197,11 +238,43 @@ export class TitlePhase extends Phase {
     await globalScene.ui.setMode(UiMode.TITLE, config);
   }
 
+  /**
+   * Tears down whatever was on screen before a run starts.
+   *
+   * @remarks
+   * `setMode` only clears the handler that is currently active, so screens further down the mode
+   * chain - the homework planner and any menu it opened - would keep their containers painted over
+   * the run that is starting.
+   */
+  private leaveTitleScreen(): void {
+    const { ui } = globalScene;
+    for (const mode of ui.modeChain) {
+      ui.handlers[mode]?.clear();
+    }
+    ui.setMode(UiMode.MESSAGE);
+    ui.resetModeChain();
+    ui.clearText();
+  }
+
+  /**
+   * Shows the homework planner as the home screen, rebuilt from the current plan.
+   *
+   * @remarks
+   * `setMode` returns early when the requested mode is already active, so a title phase that follows
+   * another one with no screen in between (loading a slot and backing out, for instance) would leave
+   * the planner displaying a stale plan. Stepping through the message mode forces a fresh build.
+   */
+  private async showHomeworkHome(options: OptionSelectItem[]): Promise<void> {
+    if (globalScene.ui.mode === UiMode.HOMEWORK) {
+      await globalScene.ui.setMode(UiMode.MESSAGE);
+    }
+    await globalScene.ui.setMode(UiMode.HOMEWORK, { playOptions: options });
+  }
+
   // TODO: Make callers actually wait for the save slot to load
   private async loadSaveSlot(slotId: number): Promise<void> {
     // TODO: Do we need to `await` this?
-    globalScene.ui.setMode(UiMode.MESSAGE);
-    globalScene.ui.resetModeChain();
+    this.leaveTitleScreen();
     globalScene.sessionSlotId = slotId;
     try {
       const success = await globalScene.gameData.loadSession(slotId);
